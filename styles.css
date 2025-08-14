@@ -123,6 +123,7 @@ img{max-width:100%;display:block}
   outline:none;
   width:100%;
   font-size: 14px; /* 🔄 CHANGE: slightly smaller font for elegance */
+  transition: all 0.15s ease-in-out; /* Smooth hover/focus */
 }
 .input:focus, select:focus, textarea:focus{
   box-shadow:0 0 0 3px var(--ring); /* 🔄 CHANGE: softer focus ring */
@@ -253,7 +254,7 @@ img{max-width:100%;display:block}
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); /* 🔄 CHANGE: slightly narrower columns */
   gap: 8px 12px; /* smaller gap for tighter look */
-  align-items: end;
+  /*-- align-items: end; */
 }
 
 .filter-grid label {
@@ -261,7 +262,7 @@ img{max-width:100%;display:block}
   font-size: 12px; /* 🔄 CHANGE: smaller label font */
   color: var(--muted);
   display: block;
-  margin-bottom: 4px; /* 🔄 CHANGE: tighter spacing */
+  margin-bottom: 3px; /* 🔄 CHANGE: tighter spacing */
 }
 
 .filter-actions {

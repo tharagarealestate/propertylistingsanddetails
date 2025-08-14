@@ -95,31 +95,104 @@ const App = (() => {
 })();
 
 // === PRICE RANGE SLIDER HANDLER ===
-const minSlider = document.getElementById("minPrice");
-const maxSlider = document.getElementById("maxPrice");
-const minValueDisplay = document.getElementById("minPriceValue");
-const maxValueDisplay = document.getElementById("maxPriceValue");
+// === PRICE RANGE SLIDER – full functionality ===
+document.addEventListener('DOMContentLoaded', () => {
+  const root = document.querySelector('.price-range');
+  if (!root) return;
 
-function formatPrice(num) {
-  if (num >= 10000000) return `₹${(num/10000000).toFixed(1)}Cr`;
-  if (num >= 100000) return `₹${(num/100000).toFixed(0)}L`;
-  return `₹${num}`;
-}
+  // Config via data-attributes
+  const RANGE_MIN = Number(root.dataset.min ?? 0);
+  const RANGE_MAX = Number(root.dataset.max ?? 20000000);   // 2 Cr
+  const STEP      = Number(root.dataset.step ?? 100000);     // 1 L
+  const GAP       = Number(root.dataset.gap ?? 200000);      // 2 L min gap
 
-function updatePriceValues() {
-  let minVal = parseInt(minSlider.value);
-  let maxVal = parseInt(maxSlider.value);
+  const minSlider = document.getElementById('priceMinSlider');
+  const maxSlider = document.getElementById('priceMaxSlider');
+  const progress  = root.querySelector('.range-progress');
 
-  if (minVal > maxVal) {
-    [minSlider.value, maxSlider.value] = [maxVal, minVal];
+  const minValueDisplay = document.getElementById('minPriceValue');
+  const maxValueDisplay = document.getElementById('maxPriceValue');
+
+  // Hidden inputs (keeps your existing filter/apply logic working)
+  const minHidden = document.getElementById('minPrice');
+  const maxHidden = document.getElementById('maxPrice');
+
+  // Init sliders
+  [minSlider, maxSlider].forEach(sl => {
+    sl.min = RANGE_MIN;
+    sl.max = RANGE_MAX;
+    sl.step = STEP;
+  });
+
+  // Default values (use existing values if present)
+  const startMin = Number(minHidden?.value || RANGE_MIN);
+  const startMax = Number(maxHidden?.value || RANGE_MAX);
+
+  minSlider.value = Math.max(RANGE_MIN, Math.min(startMin, RANGE_MAX));
+  maxSlider.value = Math.max(RANGE_MIN, Math.min(startMax, RANGE_MAX));
+
+  function formatINRShort(num) {
+    if (num >= 10000000) { // Crore
+      const v = (num / 10000000);
+      return `₹${(Math.round(v * 10) / 10).toString()}Cr`;
+    }
+    if (num >= 100000) {   // Lakh
+      const v = (num / 100000);
+      return `₹${Math.round(v)}L`;
+    }
+    return `₹${num.toLocaleString('en-IN')}`;
   }
 
-  minValueDisplay.textContent = formatPrice(minSlider.value);
-  maxValueDisplay.textContent = formatPrice(maxSlider.value);
-}
+  function clampWithGap() {
+    let a = Number(minSlider.value);
+    let b = Number(maxSlider.value);
 
-[minSlider, maxSlider].forEach(slider =>
-  slider.addEventListener("input", updatePriceValues)
-);
+    // keep thumbs at least GAP apart
+    if (b - a < GAP) {
+      if (this === minSlider) {
+        a = Math.min(a, RANGE_MAX - GAP);
+        b = a + GAP;
+        maxSlider.value = b;
+      } else {
+        b = Math.max(b, RANGE_MIN + GAP);
+        a = b - GAP;
+        minSlider.value = a;
+      }
+    }
+  }
 
-updatePriceValues();
+  function updateUI() {
+    const a = Number(minSlider.value);
+    const b = Number(maxSlider.value);
+
+    // progress bar left/right via percentages
+    const leftPct  = ((a - RANGE_MIN) / (RANGE_MAX - RANGE_MIN)) * 100;
+    const rightPct = 100 - ((b - RANGE_MIN) / (RANGE_MAX - RANGE_MIN)) * 100;
+    progress.style.left  = `${leftPct}%`;
+    progress.style.right = `${rightPct}%`;
+
+    // labels
+    minValueDisplay.textContent = formatINRShort(a);
+    maxValueDisplay.textContent = formatINRShort(b);
+
+    // hidden fields for your existing filters
+    if (minHidden) minHidden.value = a;
+    if (maxHidden) maxHidden.value = b;
+
+    // If your filter listens to 'input' or 'change', emit one:
+    minHidden?.dispatchEvent(new Event('input', { bubbles: true }));
+    maxHidden?.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function onSlide() {
+    clampWithGap.call(this);
+    updateUI();
+  }
+
+  minSlider.addEventListener('input', onSlide);
+  maxSlider.addEventListener('input', onSlide);
+
+  // Initialize once
+  clampWithGap.call(maxSlider);
+  updateUI();
+});

@@ -44,14 +44,26 @@
         <!-- Price -->
         <div>
           <label>Price (₹)</label>
-          <div class="price-slider">
-            <input type="range" id="minPrice" min="0" max="50000000" step="50000" value="1000000">
-            <input type="range" id="maxPrice" min="0" max="50000000" step="50000" value="20000000">
-          <div class="price-values">
-            <span id="minPriceValue">₹10L</span> – <span id="maxPriceValue">₹2Cr</span>
+
+          <!-- Configurable dual slider -->
+          <div class="price-range" data-min="0" data-max="20000000" data-step="100000" data-gap="200000">
+            <div class="slider-track">
+              <div class="range-progress"></div>
+            </div>
+            <input type="range" id="priceMinSlider" aria-label="Minimum price">
+            <input type="range" id="priceMaxSlider" aria-label="Maximum price">
           </div>
+
+          <div class="price-values">
+            <span id="minPriceValue">₹0</span>
+            <span>–</span>
+            <span id="maxPriceValue">₹2Cr</span>
+          </div>
+
+          <!-- Keep these for compatibility with your existing filtering code -->
+          <input type="number" id="minPrice" hidden>
+          <input type="number" id="maxPrice" hidden>
         </div>
-      </div>
 
         <!-- Sort -->
         <div>

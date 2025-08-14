@@ -275,44 +275,90 @@ select[multiple] {
 }
 
 /* === Price slider styling === */
-.price-slider {
+/* === Price dual slider === */
+.price-range{
+  --thumb-size: 18px;
+  --track-h: 6px;
+  --brand: var(--brand, #6e0d25);
+
   position: relative;
-  padding: 6px 0;
+  height: 32px;
+  margin-top: 6px;
 }
 
-.price-slider input[type="range"] {
-  -webkit-appearance: none;
+.price-range .slider-track{
+  position: absolute;
+  left: 0; right: 0;
+  top: 50%;
+  height: var(--track-h);
+  transform: translateY(-50%);
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.price-range .range-progress{
+  position: absolute;
+  top: 0; bottom: 0;
+  left: 0; right: 0;               /* JS updates left/right as percentages */
+  background: linear-gradient(90deg, var(--brand), var(--brand-2));
+  border-radius: 999px;
+}
+
+/* Stack two ranges */
+.price-range input[type="range"]{
+  position: absolute;
+  inset: 0;
   width: 100%;
-  background: transparent;
-  position: relative;
-  z-index: 2;
-}
-
-.price-slider input[type="range"]::-webkit-slider-thumb {
+  background: none;
+  pointer-events: none;             /* only the thumbs catch events */
   -webkit-appearance: none;
-  height: 16px;
-  width: 16px;
+  appearance: none;
+}
+
+/* WebKit thumb */
+.price-range input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: auto;
+  width: var(--thumb-size);
+  height: var(--thumb-size);
   border-radius: 50%;
-  background: var(--brand);
+  background: #fff;
+  border: 3px solid var(--brand);
+  box-shadow: 0 2px 8px rgba(110,13,37,.2);
   cursor: pointer;
-  margin-top: -6px;
-  box-shadow: 0 0 0 2px white, 0 0 0 4px var(--brand);
-  transition: 0.2s ease;
 }
 
-.price-slider input[type="range"]::-webkit-slider-thumb:hover {
-  transform: scale(1.1);
+/* Firefox thumb */
+.price-range input[type="range"]::-moz-range-thumb{
+  pointer-events: auto;
+  width: var(--thumb-size);
+  height: var(--thumb-size);
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--brand);
+  box-shadow: 0 2px 8px rgba(110,13,37,.2);
+  cursor: pointer;
 }
 
-.price-slider input[type="range"]::-webkit-slider-runnable-track {
-  height: 4px;
-  background: linear-gradient(to right, var(--brand) 0%, var(--brand-2) 100%);
-  border-radius: 2px;
+/* Remove default Firefox track so our custom track shows */
+.price-range input[type="range"]::-moz-range-track{
+  background: transparent;
 }
 
-.price-values {
-  font-size: 13px;
-  color: var(--muted);
-  margin-top: 4px;
-  text-align: center;
+/* Labels under the slider */
+.price-values{
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-start;
+  margin-top: 6px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Subtle hover on the whole price row for a classy feel */
+.price-range:hover .slider-track{
+  box-shadow: 0 3px 10px rgba(110,13,37,.08) inset;
 }

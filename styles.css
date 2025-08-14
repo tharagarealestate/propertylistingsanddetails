@@ -89,15 +89,16 @@ img{max-width:100%;display:block}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 
 .input, select, textarea{
-  padding:12px;
-  border-radius:12px;
+  padding:10px 12px; /* 🔄 CHANGE: reduced padding for compact feel */
+  border-radius:10px; /* 🔄 CHANGE: smaller radius for modern look */
   border:1px solid #e5e7eb;
   background:#fff;
   outline:none;
-  width:100%
+  width:100%;
+  font-size: 14px; /* 🔄 CHANGE: slightly smaller font for elegance */
 }
 .input:focus, select:focus, textarea:focus{
-  box-shadow:0 0 0 4px var(--ring);
+  box-shadow:0 0 0 3px var(--ring); /* 🔄 CHANGE: softer focus ring */
   border-color:var(--brand)
 }
 
@@ -175,41 +176,72 @@ img{max-width:100%;display:block}
 /* === NEW FILTER BOX STYLES === */
 .filter-container {
   background: linear-gradient(180deg, #fff, #fdf9f7);
-  border-radius: 18px;
-  padding: 20px;
+  border-radius: 16px; /* 🔄 CHANGE: slightly smaller for sleekness */
+  padding: 16px; /* 🔄 CHANGE: more compact */
   border: 1px solid #f0d9d9;
-  box-shadow: 0 6px 20px rgba(110, 13, 37, 0.08);
+  box-shadow: 0 4px 14px rgba(110, 13, 37, 0.06); /* 🔄 CHANGE: softer shadow */
+}
+
+.section-heading {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--brand-2); /* 🔄 Subtle maroon shade */
+  letter-spacing: 0.02em;
+  margin-bottom: 18px;
+  text-align: left;
+  border-bottom: 2px solid rgba(0,0,0,0.05); /* thin classy underline */
+  padding-bottom: 4px;
+}
+
+.section-heading span {
+  color: var(--muted); /* optional highlight for certain words */
+  font-weight: 500;
 }
 
 .filter-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); /* 🔄 CHANGE: slightly narrower columns */
+  gap: 14px; /* 🔄 CHANGE: reduced gap for compactness */
   align-items: end;
 }
 
 .filter-grid label {
   font-weight: 600;
-  font-size: 13px;
+  font-size: 12px; /* 🔄 CHANGE: smaller label font */
   color: var(--muted);
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: 4px; /* 🔄 CHANGE: tighter spacing */
 }
 
 .filter-actions {
   display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 10px;
+  justify-content: space-between; /* 🔄 CHANGE: buttons spread apart for balance */
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .city-locality-group {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 10px; /* 🔄 CHANGE: smaller gap */
 }
 
 select[multiple] {
   height: auto;
-  min-height: 140px;
+  min-height: 120px; /* 🔄 CHANGE: shorter multiple-select height */
+}
+
+/* === NEW: subtle hover for selects and inputs === */
+.input:hover, select:hover, textarea:hover {
+  border-color: var(--brand);
+  background: #fffdfd;
+}
+
+/* === NEW: active filter chips === */
+.active-filter-chip {
+  background: var(--brand);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 12px;
 }

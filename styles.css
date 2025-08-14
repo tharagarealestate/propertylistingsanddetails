@@ -192,16 +192,16 @@ img{max-width:100%;display:block}
   box-shadow: 0 4px 14px rgba(110, 13, 37, 0.06); /* 🔄 CHANGE: softer shadow */
 }
 
-.section-heading {
+/*.section-heading {
   font-size: 20px;
   font-weight: 700;
-  color: var(--brand-2); /* 🔄 Subtle maroon shade */
+  color: var(--brand-2); 
   letter-spacing: 0.02em;
   margin-bottom: 18px;
   text-align: left;
-  border-bottom: 2px solid rgba(0,0,0,0.05); /* thin classy underline */
+  border-bottom: 2px solid rgba(0,0,0,0.05);
   padding-bottom: 4px;
-}
+}*/
 
 .section-heading span {
   color: var(--muted); /* optional highlight for certain words */

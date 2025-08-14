@@ -2,12 +2,42 @@ const PAGE_SIZE = 9;
 let ALL = [];
 let PAGE = 1;
 
-function el(html){ const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstChild; }
+function el(html){ 
+  const t = document.createElement('template'); 
+  t.innerHTML = html.trim(); 
+  return t.content.firstChild; 
+}
 
+// 🔹 1. CHANGED — Added locality filter population
 function hydrateCityOptions(){
   const cities = Array.from(new Set(ALL.map(p=>p.city).filter(Boolean))).sort();
   const sel = document.querySelector('#city');
   sel.innerHTML = cities.map(c=>`<option>${c}</option>`).join('');
+
+  // Add event listener to update locality dynamically when city changes
+  sel.addEventListener('change', ()=>{
+    const selectedCities = Array.from(sel.selectedOptions).map(o=>o.value);
+    hydrateLocalityOptions(selectedCities);
+  });
+}
+
+// 🔹 2. NEW FUNCTION — Populates locality options based on selected cities
+function hydrateLocalityOptions(selectedCities){
+  const localitySelect = document.querySelector('#locality');
+  if(!localitySelect) return; // in case HTML doesn't have locality dropdown
+
+  if(selectedCities.length === 0){
+    localitySelect.innerHTML = '';
+    return;
+  }
+
+  const localities = Array.from(new Set(
+    ALL.filter(p=> selectedCities.includes(p.city))
+       .map(p=>p.locality)
+       .filter(Boolean)
+  )).sort();
+
+  localitySelect.innerHTML = localities.map(l=>`<option>${l}</option>`).join('');
 }
 
 function activeFilterBadges(filters){
@@ -24,6 +54,12 @@ function activeFilterBadges(filters){
 function apply(){
   const q = document.querySelector('#q').value.trim();
   const citySel = Array.from(document.querySelector('#city').selectedOptions).map(o=>o.value);
+
+  // 🔹 3. CHANGED — Added locality filter usage
+  const localitySel = document.querySelector('#locality') 
+    ? Array.from(document.querySelector('#locality').selectedOptions).map(o=>o.value)
+    : [];
+
   const minP = parseInt(document.querySelector('#minPrice').value||0);
   const maxP = parseInt(document.querySelector('#maxPrice').value||0);
   const ptype = document.querySelector('#ptype').value;
@@ -35,7 +71,18 @@ function apply(){
   const amenity = document.querySelector('#amenity').value.trim();
   const sort = document.querySelector('#sort').value;
 
-  activeFilterBadges({q, city: citySel, price:`${minP||''}-${maxP||''}`, type: ptype, bhk, furnished, facing, area:`${minA||''}-${maxA||''}`, amenity});
+  activeFilterBadges({
+    q, 
+    city: citySel, 
+    locality: localitySel, // 🔹 4. NEW — Show locality in badges
+    price:`${minP||''}-${maxP||''}`, 
+    type: ptype, 
+    bhk, 
+    furnished, 
+    facing, 
+    area:`${minA||''}-${maxA||''}`, 
+    amenity
+  });
 
   let filtered = ALL.filter(p=>{
     if(q){
@@ -44,6 +91,10 @@ function apply(){
       if(!pass) return false;
     }
     if(citySel.length && !citySel.includes(p.city)) return false;
+
+    // 🔹 5. NEW — Locality filter condition
+    if(localitySel.length && !localitySel.includes(p.locality)) return false;
+
     if(minP && (p.priceINR||0) < minP) return false;
     if(maxP && (p.priceINR||0) > maxP) return false;
     if(ptype && p.type !== ptype) return false;
@@ -86,12 +137,19 @@ async function init(){
   const data = await App.fetchSheetOrLocal();
   ALL = data.properties || [];
   hydrateCityOptions();
+
+  // 🔹 6. CHANGED — Initialize locality dropdown empty
+  hydrateLocalityOptions([]);
+
   apply();
   document.querySelector('#apply').addEventListener('click', ()=>{ PAGE=1; apply(); });
   document.querySelector('#reset').addEventListener('click', ()=>{
     ['q','minPrice','maxPrice','ptype','bhk','furnished','facing','minArea','maxArea','amenity']
       .forEach(id=> document.querySelector('#'+id).value='');
     Array.from(document.querySelector('#city').options).forEach(o=>o.selected=false);
+    if(document.querySelector('#locality')){
+      Array.from(document.querySelector('#locality').options).forEach(o=>o.selected=false);
+    }
     PAGE=1; apply();
   });
   document.querySelector('#q').addEventListener('input', ()=>{ PAGE=1; apply(); });

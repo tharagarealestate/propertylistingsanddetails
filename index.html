@@ -20,23 +20,42 @@
   </header>
 
   <main class="container">
-    <section class="card" style="padding:16px 16px 8px">
-      <div class="grid" style="grid-template-columns: 1.5fr 1fr 1fr 1fr; align-items:end">
+
+    <section class="filter-container">
+      <div class="filter-grid">
+        
+        <!-- Search -->
         <div>
           <label>Search (city, locality, project)</label>
           <input id="q" class="input" placeholder="Type to search… e.g., Anna Nagar, Villas, Porur">
         </div>
+
+        <!-- City -->
         <div>
           <label>City</label>
+          <!-- 🔄 CHANGE: allow multiple selection & set size -->
           <select id="city" multiple size="5"></select>
         </div>
+
+        <!-- Locality -->
+        <div>
+          <label>Locality</label>
+          <!-- 🔄 CHANGE: multiple select & size for consistency -->
+          <select id="locality" multiple size="5">
+            <option value="">Select Locality</option>
+          </select>
+        </div>
+
+        <!-- Price -->
         <div>
           <label>Price (₹)</label>
-          <div class="grid" style="grid-template-columns:1fr 1fr">
+          <div class="grid-2">
             <input id="minPrice" class="input" type="number" placeholder="Min">
             <input id="maxPrice" class="input" type="number" placeholder="Max">
           </div>
         </div>
+
+        <!-- Sort -->
         <div>
           <label>Sort</label>
           <select id="sort">
@@ -47,9 +66,8 @@
             <option value="areaHigh">Area: High → Low</option>
           </select>
         </div>
-      </div>
 
-      <div class="grid" style="grid-template-columns:repeat(6,minmax(0,1fr));margin-top:12px">
+        <!-- Type -->
         <div>
           <label>Type</label>
           <select id="ptype">
@@ -60,6 +78,8 @@
             <option>Independent House</option>
           </select>
         </div>
+
+        <!-- BHK -->
         <div>
           <label>BHK</label>
           <select id="bhk">
@@ -71,6 +91,8 @@
             <option>5</option>
           </select>
         </div>
+
+        <!-- Furnished -->
         <div>
           <label>Furnished</label>
           <select id="furnished">
@@ -80,6 +102,8 @@
             <option>Fully Furnished</option>
           </select>
         </div>
+
+        <!-- Facing -->
         <div>
           <label>Facing</label>
           <select id="facing">
@@ -90,20 +114,26 @@
             <option>South</option>
           </select>
         </div>
+
+        <!-- Area -->
         <div>
           <label>Area (sqft)</label>
-          <div class="grid" style="grid-template-columns:1fr 1fr">
+          <div class="grid-2">
             <input id="minArea" class="input" type="number" placeholder="Min">
             <input id="maxArea" class="input" type="number" placeholder="Max">
           </div>
         </div>
+
+        <!-- Amenities -->
         <div>
           <label>Amenities (contains)</label>
           <input id="amenity" class="input" placeholder="e.g., Gym, Lift, Parking">
         </div>
+
       </div>
 
-      <div class="row" style="justify-content:flex-end;padding:12px 0 8px">
+      <!-- Buttons -->
+      <div class="filter-actions">
         <button id="reset" class="btn secondary">Reset</button>
         <button id="apply" class="btn">Apply Filters</button>
       </div>

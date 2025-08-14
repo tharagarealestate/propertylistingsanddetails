@@ -59,6 +59,21 @@ img{max-width:100%;display:block}
   letter-spacing: 0.03em;
 }
 
+.page-title {
+  text-align: center;
+  font-weight: 800;
+  font-size: 28px;
+  line-height: 1.2;
+  margin: 20px 0 14px;
+  letter-spacing: .02em;
+}
+
+.gradient-title {
+  background: linear-gradient(90deg, #6e0d25 0%, #b14c6e 45%, #6e0d25 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 .card{
   background:#fff;
   border-radius:18px;

@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tharaga — Verified Properties in Tamil Nadu</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+  <script defer src="./config.js"></script>
+  <script defer src="./app.js"></script>
+  <script defer src="./listings.js"></script>
+</head>
+<body>
+  <header class="header">
+    <div class="inner container">
+      <div class="brand">THARAGA</div>
+      <div class="badge">Verified Properties • Tamil Nadu</div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card" style="padding:16px 16px 8px">
+      <div class="grid" style="grid-template-columns: 1.5fr 1fr 1fr 1fr; align-items:end">
+        <div>
+          <label>Search (city, locality, project)</label>
+          <input id="q" class="input" placeholder="Type to search… e.g., Anna Nagar, Villas, Porur">
+        </div>
+        <div>
+          <label>City</label>
+          <select id="city" multiple size="5"></select>
+        </div>
+        <div>
+          <label>Price (₹)</label>
+          <div class="grid" style="grid-template-columns:1fr 1fr">
+            <input id="minPrice" class="input" type="number" placeholder="Min">
+            <input id="maxPrice" class="input" type="number" placeholder="Max">
+          </div>
+        </div>
+        <div>
+          <label>Sort</label>
+          <select id="sort">
+            <option value="relevance">AI Relevance</option>
+            <option value="newest">Newest</option>
+            <option value="priceLow">Price: Low → High</option>
+            <option value="priceHigh">Price: High → Low</option>
+            <option value="areaHigh">Area: High → Low</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid" style="grid-template-columns:repeat(6,minmax(0,1fr));margin-top:12px">
+        <div>
+          <label>Type</label>
+          <select id="ptype">
+            <option value="">Any</option>
+            <option>Apartment</option>
+            <option>Villa</option>
+            <option>Plot</option>
+            <option>Independent House</option>
+          </select>
+        </div>
+        <div>
+          <label>BHK</label>
+          <select id="bhk">
+            <option value="">Any</option>
+            <option>1</option>
+            <option>2</option>
+            <option>3</option>
+            <option>4</option>
+            <option>5</option>
+          </select>
+        </div>
+        <div>
+          <label>Furnished</label>
+          <select id="furnished">
+            <option value="">Any</option>
+            <option>Semi Furnished</option>
+            <option>Unfurnished</option>
+            <option>Fully Furnished</option>
+          </select>
+        </div>
+        <div>
+          <label>Facing</label>
+          <select id="facing">
+            <option value="">Any</option>
+            <option>East</option>
+            <option>West</option>
+            <option>North</option>
+            <option>South</option>
+          </select>
+        </div>
+        <div>
+          <label>Area (sqft)</label>
+          <div class="grid" style="grid-template-columns:1fr 1fr">
+            <input id="minArea" class="input" type="number" placeholder="Min">
+            <input id="maxArea" class="input" type="number" placeholder="Max">
+          </div>
+        </div>
+        <div>
+          <label>Amenities (contains)</label>
+          <input id="amenity" class="input" placeholder="e.g., Gym, Lift, Parking">
+        </div>
+      </div>
+
+      <div class="row" style="justify-content:flex-end;padding:12px 0 8px">
+        <button id="reset" class="btn secondary">Reset</button>
+        <button id="apply" class="btn">Apply Filters</button>
+      </div>
+    </section>
+
+    <section id="stats" class="row" style="margin:12px 0 4px">
+      <div class="tag" id="count">0 results</div>
+      <div class="row" id="activeFilters" style="gap:8px"></div>
+    </section>
+
+    <section id="results" class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr));"></section>
+    <div id="pager" class="pager"></div>
+  </main>
+
+  <footer class="footer">© Tharaga — Safe, Transparent, Verified</footer>
+</body>
+</html>

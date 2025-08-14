@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tharaga — Property Details</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+  <script defer src="./config.js"></script>
+  <script defer src="./app.js"></script>
+  <script defer src="./details.js"></script>
+</head>
+<body>
+  <header class="header">
+    <div class="inner container">
+      <div class="brand">THARAGA</div>
+      <div class="badge">Safe • Transparent • Verified</div>
+    </div>
+  </header>
+
+  <main class="container">
+    <article id="prop" class="card" style="overflow:visible">
+      <div id="gallery" class="details-hero"></div>
+      <div style="padding:16px">
+        <div class="row" style="justify-content:space-between">
+          <div>
+            <div id="title" style="font-size:24px;font-weight:800"></div>
+            <div id="meta" style="color:var(--muted);font-size:14px"></div>
+          </div>
+          <div class="kpi">
+            <div class="pill" id="price"></div>
+            <div class="pill" id="pps"></div>
+            <div class="pill" id="match"></div>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:12px" id="tags"></div>
+
+        <div class="grid" style="grid-template-columns:2fr 1fr; gap:16px; margin-top:16px">
+          <section class="card" style="padding:16px">
+            <h3>Overview</h3>
+            <div id="overview"></div>
+            <h3>Summary</h3>
+            <p id="summary"></p>
+            <div id="smartSummary" class="tag"></div>
+            <div id="docs" style="margin-top:8px"></div>
+            <div id="map" style="margin-top:10px">
+              <iframe id="gmap" width="100%" height="260" style="border:0" loading="lazy"
+                referrerpolicy="no-referrer-when-downgrade"></iframe>
+            </div>
+          </section>
+
+          <aside class="card" style="padding:16px;position:sticky;top:96px;height:max-content">
+            <h3>Contact Owner</h3>
+            <p id="ownerName"></p>
+            <div class="row">
+              <a class="btn" id="waBtn" target="_blank">WhatsApp</a>
+              <button class="btn secondary" id="contactBtn" type="button">Enquire</button>
+            </div>
+            <div style="margin-top:12px">
+              <h4>Quick Tools</h4>
+              <div class="grid" style="grid-template-columns:1fr 1fr">
+                <div><label>Loan (₹)</label><input id="loan" class="input" type="number" placeholder="e.g., 4000000"></div>
+                <div><label>Tenure (yrs)</label><input id="tenure" class="input" type="number" value="20"></div>
+                <div><label>Interest (%)</label><input id="rate" class="input" type="number" value="8.5"></div>
+              </div>
+              <div style="margin-top:8px" id="emi"></div>
+            </div>
+          </aside>
+        </div>
+
+        <section class="card" style="padding:16px;margin-top:16px">
+          <h3>Amenities</h3>
+          <div id="amenities" class="row"></div>
+        </section>
+
+        <section class="card" style="padding:16px;margin-top:16px">
+          <div class="row" style="justify-content:space-between;align-items:center">
+            <h3>Similar Properties</h3>
+            <button id="enhanceBtn" class="btn secondary">AI-style Enhance Description</button>
+          </div>
+          <div id="similar" class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr));"></div>
+        </section>
+      </div>
+    </article>
+  </main>
+
+  <!-- Enquiry Modal (Netlify Forms ready) -->
+  <div id="modal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;padding:16px">
+    <form name="tharaga-enquiry" method="POST" data-netlify="true" class="card" style="max-width:520px;width:100%;padding:16px;background:#fff">
+      <input type="hidden" name="form-name" value="tharaga-enquiry">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3>Enquire about this property</h3>
+        <button type="button" class="btn secondary" id="closeModal">Close</button>
+      </div>
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+        <input class="input" name="name" placeholder="Your Name" required>
+        <input class="input" name="phone" placeholder="Phone" required>
+        <input class="input" name="email" placeholder="Email">
+        <input class="input" name="city" placeholder="City">
+      </div>
+      <textarea class="input" name="message" rows="4" style="margin-top:12px" placeholder="Tell us what you’re looking for"></textarea>
+      <input type="hidden" id="propIdField" name="propertyId" value="">
+      <div class="row" style="justify-content:flex-end;margin-top:12px">
+        <button class="btn" type="submit">Send</button>
+      </div>
+    </form>
+  </div>
+
+  <footer class="footer">© Tharaga</footer>
+</body>
+</html>

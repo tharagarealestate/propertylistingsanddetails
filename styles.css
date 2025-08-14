@@ -58,7 +58,7 @@ img{max-width:100%;display:block}
   text-align: center;
   letter-spacing: 0.03em;
   margin-top: 10px;   /* Reduce top margin */
-  margin-bottom: 20px; /* Adjust gap before filters */
+  margin-bottom: 10px; /* Adjust gap before filters */
 }
 
 .page-title {

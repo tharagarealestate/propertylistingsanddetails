@@ -226,8 +226,10 @@ img{max-width:100%;display:block}
 }
 
 .filter-grid {
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); /* 🔄 CHANGE: slightly narrower columns */
   gap: 8px 12px; /* smaller gap for tighter look */
+  align-items: end;
 }
 
 .filter-grid label {

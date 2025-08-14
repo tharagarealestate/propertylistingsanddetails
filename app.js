@@ -93,3 +93,33 @@ const App = (() => {
 
   return { fetchSheetOrLocal, score, cardHTML, currency };
 })();
+
+// === PRICE RANGE SLIDER HANDLER ===
+const minSlider = document.getElementById("minPrice");
+const maxSlider = document.getElementById("maxPrice");
+const minValueDisplay = document.getElementById("minPriceValue");
+const maxValueDisplay = document.getElementById("maxPriceValue");
+
+function formatPrice(num) {
+  if (num >= 10000000) return `₹${(num/10000000).toFixed(1)}Cr`;
+  if (num >= 100000) return `₹${(num/100000).toFixed(0)}L`;
+  return `₹${num}`;
+}
+
+function updatePriceValues() {
+  let minVal = parseInt(minSlider.value);
+  let maxVal = parseInt(maxSlider.value);
+
+  if (minVal > maxVal) {
+    [minSlider.value, maxSlider.value] = [maxVal, minVal];
+  }
+
+  minValueDisplay.textContent = formatPrice(minSlider.value);
+  maxValueDisplay.textContent = formatPrice(maxSlider.value);
+}
+
+[minSlider, maxSlider].forEach(slider =>
+  slider.addEventListener("input", updatePriceValues)
+);
+
+updatePriceValues();

@@ -19,28 +19,24 @@
   </header>
 
   <main class="container">
-    
-    <section class="filter-container">
-      <div class="filter-grid">
-        
-        <!-- Search -->
-        <div>
-          <label>Search (city, locality, project)</label>
-          <input id="q" class="input" placeholder="Type to search… e.g., Anna Nagar, Villas, Porur">
-        </div>
+
+    <section class="filter-container compact">
+      <div class="filter-search">
+        <input id="q" class="input search-large" placeholder="Search by city, locality, project, landmark…">
+      </div>
+
+      <div class="filter-grid compact-grid">
 
         <!-- City -->
         <div>
           <label>City</label>
-          <!-- 🔄 CHANGE: allow multiple selection & set size -->
-          <select id="city" multiple size="5"></select>
+          <select id="city" multiple size="4"></select>
         </div>
 
-        <!-- Locality -->
+        <!-- 🔄 CHANGE #2: Locality auto-updates based on City -->
         <div>
           <label>Locality</label>
-          <!-- 🔄 CHANGE: multiple select & size for consistency -->
-          <select id="locality" multiple size="5">
+          <select id="locality" multiple size="4">
             <option value="">Select Locality</option>
           </select>
         </div>
@@ -125,19 +121,20 @@
 
         <!-- Amenities -->
         <div>
-          <label>Amenities (contains)</label>
-          <input id="amenity" class="input" placeholder="e.g., Gym, Lift, Parking">
+          <label>Amenities</label>
+          <input id="amenity" class="input" placeholder="Gym, Lift, Parking…">
         </div>
 
       </div>
 
       <!-- Buttons -->
-      <div class="filter-actions">
+      <div class="filter-actions right">
         <button id="reset" class="btn secondary">Reset</button>
-        <button id="apply" class="btn">Apply Filters</button>
+        <button id="apply" class="btn">Apply</button>
       </div>
     </section>
 
+    <!-- Results -->
     <section id="stats" class="row" style="margin:12px 0 4px">
       <div class="tag" id="count">0 results</div>
       <div class="row" id="activeFilters" style="gap:8px"></div>

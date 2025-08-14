@@ -53,7 +53,10 @@ function activeFilterBadges(filters){
 
 function apply(){
   const q = document.querySelector('#q').value.trim();
-  const citySel = Array.from(document.querySelector('#city').selectedOptions).map(o=>o.value);
+  const cityEl = document.querySelector('#city');
+  const citySel = cityEl 
+    ? Array.from(cityEl.selectedOptions).map(o=>o.value) 
+    : [];
 
   // 🔹 3. CHANGED — Added locality filter usage
   const localitySel = document.querySelector('#locality') 
@@ -136,22 +139,50 @@ function goto(n){ PAGE = n; apply(); }
 async function init(){
   const data = await App.fetchSheetOrLocal();
   ALL = data.properties || [];
-  hydrateCityOptions();
 
-  // 🔹 6. CHANGED — Initialize locality dropdown empty
-  hydrateLocalityOptions([]);
+  // ✅ Only hydrate city if dropdown exists
+  if (document.querySelector('#city')) {
+    hydrateCityOptions();
+    hydrateLocalityOptions([]); // start empty
+  } else if (document.querySelector('#locality')) {
+    // ✅ Populate all localities if city filter is gone
+    const localities = Array.from(new Set(
+      ALL.map(p => p.locality).filter(Boolean)
+    )).sort();
+    document.querySelector('#locality').innerHTML = localities.map(l => `<option>${l}</option>`).join('');
+  }
 
   apply();
-  document.querySelector('#apply').addEventListener('click', ()=>{ PAGE=1; apply(); });
-  document.querySelector('#reset').addEventListener('click', ()=>{
-    ['q','minPrice','maxPrice','ptype','bhk','furnished','facing','minArea','maxArea','amenity']
-      .forEach(id=> document.querySelector('#'+id).value='');
-    Array.from(document.querySelector('#city').options).forEach(o=>o.selected=false);
-    if(document.querySelector('#locality')){
-      Array.from(document.querySelector('#locality').options).forEach(o=>o.selected=false);
-    }
-    PAGE=1; apply();
+
+  document.querySelector('#apply').addEventListener('click', () => { 
+    PAGE = 1; 
+    apply(); 
   });
-  document.querySelector('#q').addEventListener('input', ()=>{ PAGE=1; apply(); });
+
+  document.querySelector('#reset').addEventListener('click', () => {
+    ['q','minPrice','maxPrice','ptype','bhk','furnished','facing','minArea','maxArea','amenity']
+      .forEach(id => {
+        const el = document.querySelector('#' + id);
+        if (el) el.value = '';
+      });
+
+    // ✅ Reset city only if it exists
+    if (document.querySelector('#city')) {
+      Array.from(document.querySelector('#city').options).forEach(o => o.selected = false);
+    }
+
+    if (document.querySelector('#locality')) {
+      Array.from(document.querySelector('#locality').options).forEach(o => o.selected = false);
+    }
+
+    PAGE = 1; 
+    apply();
+  });
+
+  document.querySelector('#q').addEventListener('input', () => { 
+    PAGE = 1; 
+    apply(); 
+  });
 }
 init();
+

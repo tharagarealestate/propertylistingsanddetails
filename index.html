@@ -44,11 +44,14 @@
         <!-- Price -->
         <div>
           <label>Price (₹)</label>
-          <div class="grid-2">
-            <input id="minPrice" class="input" type="number" placeholder="Min">
-            <input id="maxPrice" class="input" type="number" placeholder="Max">
+          <div class="price-slider">
+            <input type="range" id="minPrice" min="0" max="50000000" step="50000" value="1000000">
+            <input type="range" id="maxPrice" min="0" max="50000000" step="50000" value="20000000">
+          <div class="price-values">
+            <span id="minPriceValue">₹10L</span> – <span id="maxPriceValue">₹2Cr</span>
           </div>
         </div>
+      </div>
 
         <!-- Sort -->
         <div>

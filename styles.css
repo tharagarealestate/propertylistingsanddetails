@@ -116,7 +116,7 @@ img{max-width:100%;display:block}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 
 .input, select, textarea{
-  padding:10px 12px; /* 🔄 CHANGE: reduced padding for compact feel */
+  padding:8px 10px; /* 🔄 CHANGE: reduced padding for compact feel */
   border-radius:10px; /* 🔄 CHANGE: smaller radius for modern look */
   border:1px solid #e5e7eb;
   background:#fff;
@@ -228,7 +228,7 @@ img{max-width:100%;display:block}
 .filter-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); /* 🔄 CHANGE: slightly narrower columns */
-  gap: 14px; /* 🔄 CHANGE: reduced gap for compactness */
+  gap: 10px; /* 🔄 CHANGE: reduced gap for compactness */
   align-items: end;
 }
 
@@ -261,7 +261,8 @@ select[multiple] {
 /* === NEW: subtle hover for selects and inputs === */
 .input:hover, select:hover, textarea:hover {
   border-color: var(--brand);
-  background: #fffdfd;
+  background: #fffafa;
+  box-shadow: 0 2px 6px rgba(110, 13, 37, 0.06); /* New subtle hover shadow */
 }
 
 /* === NEW: active filter chips === */
@@ -271,4 +272,47 @@ select[multiple] {
   padding: 4px 8px;
   border-radius: 8px;
   font-size: 12px;
+}
+
+/* === Price slider styling === */
+.price-slider {
+  position: relative;
+  padding: 6px 0;
+}
+
+.price-slider input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  background: transparent;
+  position: relative;
+  z-index: 2;
+}
+
+.price-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: var(--brand);
+  cursor: pointer;
+  margin-top: -6px;
+  box-shadow: 0 0 0 2px white, 0 0 0 4px var(--brand);
+  transition: 0.2s ease;
+}
+
+.price-slider input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+.price-slider input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  background: linear-gradient(to right, var(--brand) 0%, var(--brand-2) 100%);
+  border-radius: 2px;
+}
+
+.price-values {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 4px;
+  text-align: center;
 }

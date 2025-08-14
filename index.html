@@ -21,17 +21,31 @@
   <main class="container">
 
     <section class="filter-container compact">
-      <div class="filter-search">
-        <input id="q" class="input search-large" placeholder="Search by city, locality, project, landmark…">
+      <div class="top-row">
+  <div class="search-box">
+    <input id="q" class="input search-large" placeholder="Search by city, locality, project, landmark…">
+  </div>
+
+  <div class="price-box">
+    <label>Price (₹)</label>
+    <div class="price-range" data-min="0" data-max="20000000" data-step="100000" data-gap="200000">
+      <div class="slider-track">
+        <div class="range-progress"></div>
       </div>
+      <input type="range" id="priceMinSlider" aria-label="Minimum price">
+      <input type="range" id="priceMaxSlider" aria-label="Maximum price">
+    </div>
+    <div class="price-values">
+      <span id="minPriceValue">₹0</span>
+      <span>–</span>
+      <span id="maxPriceValue">₹2Cr</span>
+    </div>
+    <input type="number" id="minPrice" hidden>
+    <input type="number" id="maxPrice" hidden>
+  </div>
+</div>
 
-      <div class="filter-grid compact-grid">
-
-        <!-- City -->
-        <div>
-          <label>City</label>
-          <select id="city" multiple size="4"></select>
-        </div>
+<div class="filter-grid compact-grid">
 
         <!-- 🔄 CHANGE #2: Locality auto-updates based on City -->
         <div>
@@ -42,10 +56,10 @@
         </div>
 
         <!-- Price -->
-        <div>
+        <!--<div>
           <label>Price (₹)</label>
 
-          <!-- Configurable dual slider -->
+          
           <div class="price-range" data-min="0" data-max="20000000" data-step="100000" data-gap="200000">
             <div class="slider-track">
               <div class="range-progress"></div>
@@ -60,10 +74,10 @@
             <span id="maxPriceValue">₹2Cr</span>
           </div>
 
-          <!-- Keep these for compatibility with your existing filtering code -->
+          
           <input type="number" id="minPrice" hidden>
           <input type="number" id="maxPrice" hidden>
-        </div>
+        </div> -->
 
         <!-- Sort -->
         <div>

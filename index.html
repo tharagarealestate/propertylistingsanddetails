@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Verified Properties in Tamil Nadu</title>
+  <title>Tharaga — Verified Properties in Tamil Nadu</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./styles.css">
@@ -21,24 +21,27 @@
 
   <main class="container">
 
-    <!-- 🔄 CHANGE #1: Search bar moved to top, full width -->
-    <section class="filter-container compact">
-      <div class="filter-search">
-        <input id="q" class="input search-large" placeholder="Search by city, locality, project, landmark…">
-      </div>
-
-      <div class="filter-grid compact-grid">
+    <section class="filter-container">
+      <div class="filter-grid">
+        
+        <!-- Search -->
+        <div>
+          <label>Search (city, locality, project)</label>
+          <input id="q" class="input" placeholder="Type to search… e.g., Anna Nagar, Villas, Porur">
+        </div>
 
         <!-- City -->
         <div>
           <label>City</label>
-          <select id="city" multiple size="4"></select>
+          <!-- 🔄 CHANGE: allow multiple selection & set size -->
+          <select id="city" multiple size="5"></select>
         </div>
 
-        <!-- 🔄 CHANGE #2: Locality auto-updates based on City -->
+        <!-- Locality -->
         <div>
           <label>Locality</label>
-          <select id="locality" multiple size="4">
+          <!-- 🔄 CHANGE: multiple select & size for consistency -->
+          <select id="locality" multiple size="5">
             <option value="">Select Locality</option>
           </select>
         </div>
@@ -123,20 +126,19 @@
 
         <!-- Amenities -->
         <div>
-          <label>Amenities</label>
-          <input id="amenity" class="input" placeholder="Gym, Lift, Parking…">
+          <label>Amenities (contains)</label>
+          <input id="amenity" class="input" placeholder="e.g., Gym, Lift, Parking">
         </div>
 
       </div>
 
       <!-- Buttons -->
-      <div class="filter-actions right">
+      <div class="filter-actions">
         <button id="reset" class="btn secondary">Reset</button>
-        <button id="apply" class="btn">Apply</button>
+        <button id="apply" class="btn">Apply Filters</button>
       </div>
     </section>
 
-    <!-- Results -->
     <section id="stats" class="row" style="margin:12px 0 4px">
       <div class="tag" id="count">0 results</div>
       <div class="row" id="activeFilters" style="gap:8px"></div>

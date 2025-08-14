@@ -37,7 +37,7 @@ img{max-width:100%;display:block}
 }
 .brand{font-weight:800;letter-spacing:.12em}
 
-.badge{
+/*.badge{
   display:inline-flex;
   align-items:center;
   gap:6px;
@@ -47,6 +47,16 @@ img{max-width:100%;display:block}
   color:var(--brand);
   font-weight:700;
   font-size:12px
+}*/
+
+.listings-title {
+  font-weight: 800;
+  font-size: 20px;
+  background: linear-gradient(90deg, #6e0d25, #b14c6e, #6e0d25); /* classy gradient */
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-align: center;
+  letter-spacing: 0.03em;
 }
 
 .card{

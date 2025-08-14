@@ -226,10 +226,8 @@ img{max-width:100%;display:block}
 }
 
 .filter-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); /* 🔄 CHANGE: slightly narrower columns */
-  gap: 10px; /* 🔄 CHANGE: reduced gap for compactness */
-  align-items: end;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px 12px; /* smaller gap for tighter look */
 }
 
 .filter-grid label {
@@ -248,14 +246,15 @@ img{max-width:100%;display:block}
 }
 
 .city-locality-group {
+  grid-column: 1 / span 2; /* two columns for this group */
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px; /* 🔄 CHANGE: smaller gap */
+  gap: 10px;
 }
 
+
 select[multiple] {
-  height: auto;
-  min-height: 120px; /* 🔄 CHANGE: shorter multiple-select height */
+  min-height: 90px; /* 🔄 CHANGE: shorter multiple-select height */
 }
 
 /* === NEW: subtle hover for selects and inputs === */
@@ -277,8 +276,8 @@ select[multiple] {
 /* === Price slider styling === */
 /* === Price dual slider === */
 .price-range{
-  --thumb-size: 18px;
-  --track-h: 6px;
+  --thumb-size: 20px;
+  --track-h: 8px;
   --brand: var(--brand, #6e0d25);
 
   position: relative;
@@ -360,5 +359,6 @@ select[multiple] {
 
 /* Subtle hover on the whole price row for a classy feel */
 .price-range:hover .slider-track{
-  box-shadow: 0 3px 10px rgba(110,13,37,.08) inset;
+  box-shadow: 0 3px 12px rgba(110,13,37,.15) inset;
+  background: #f9f3f3;
 }

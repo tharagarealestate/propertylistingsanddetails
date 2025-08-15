@@ -138,7 +138,8 @@ function goto(n){ PAGE = n; apply(); }
 
 async function init() {
   const data = await App.fetchSheetOrLocal();
-  ALL = data.properties || [];
+  ALL = (data.properties || []).filter(p => p && p.title && p.title.trim() !== "");
+
 
   // ✅ Hydrate city/locality dropdowns if present
   if (document.querySelector('#city')) {

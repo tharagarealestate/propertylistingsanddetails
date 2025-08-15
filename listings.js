@@ -152,6 +152,21 @@ async function init(){
     document.querySelector('#locality').innerHTML = localities.map(l => `<option>${l}</option>`).join('');
   }
 
+  // 🌟 Read ?city=&q= from URL and prefill inputs
+  (() => {
+    const p = new URLSearchParams(location.search);
+    const q = p.get("q") || "";
+    const c = p.get("city") || "";
+
+    const qBox = document.querySelector("#q");
+    if (qBox) qBox.value = q;
+
+    const citySel = document.querySelector("#city");
+    if (citySel && c){
+      [...citySel.options].forEach(o => { o.selected = (o.value === c); });
+    }
+  })();
+
   apply();
 
   document.querySelector('#apply').addEventListener('click', () => { 

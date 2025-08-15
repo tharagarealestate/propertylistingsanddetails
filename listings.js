@@ -136,68 +136,74 @@ function apply(){
 
 function goto(n){ PAGE = n; apply(); }
 
-async function init(){
+async function init() {
   const data = await App.fetchSheetOrLocal();
   ALL = data.properties || [];
 
-  // ✅ Only hydrate city if dropdown exists
+  // ✅ Hydrate city/locality dropdowns if present
   if (document.querySelector('#city')) {
     hydrateCityOptions();
     hydrateLocalityOptions([]); // start empty
   } else if (document.querySelector('#locality')) {
-    // ✅ Populate all localities if city filter is gone
+    // Populate all localities if city filter is not present
     const localities = Array.from(new Set(
       ALL.map(p => p.locality).filter(Boolean)
     )).sort();
-    document.querySelector('#locality').innerHTML = localities.map(l => `<option>${l}</option>`).join('');
+    document.querySelector('#locality').innerHTML =
+      localities.map(l => `<option>${l}</option>`).join('');
   }
 
   // 🌟 Read ?city=&q= from URL and prefill inputs
   (() => {
-    const p = new URLSearchParams(location.search);
-    const q = p.get("q") || "";
-    const c = p.get("city") || "";
+    const params = new URLSearchParams(location.search);
+    const q = params.get("q") || "";
+    const c = params.get("city") || "";
 
     const qBox = document.querySelector("#q");
     if (qBox) qBox.value = q;
 
     const citySel = document.querySelector("#city");
-    if (citySel && c){
-      [...citySel.options].forEach(o => { o.selected = (o.value === c); });
+    if (citySel && c) {
+      [...citySel.options].forEach(o => {
+        o.selected = (o.value === c);
+      });
+      hydrateLocalityOptions([c]); // ✅ Load localities for preselected city
     }
   })();
 
   apply();
 
-  document.querySelector('#apply').addEventListener('click', () => { 
-    PAGE = 1; 
-    apply(); 
+  // Apply button click
+  document.querySelector('#apply')?.addEventListener('click', () => {
+    PAGE = 1;
+    apply();
   });
 
-  document.querySelector('#reset').addEventListener('click', () => {
-    ['q','minPrice','maxPrice','ptype','bhk','furnished','facing','minArea','maxArea','amenity']
+  // Reset button click
+  document.querySelector('#reset')?.addEventListener('click', () => {
+    ['q', 'minPrice', 'maxPrice', 'ptype', 'bhk', 'furnished', 'facing', 'minArea', 'maxArea', 'amenity']
       .forEach(id => {
         const el = document.querySelector('#' + id);
         if (el) el.value = '';
       });
 
-    // ✅ Reset city only if it exists
     if (document.querySelector('#city')) {
       Array.from(document.querySelector('#city').options).forEach(o => o.selected = false);
     }
-
     if (document.querySelector('#locality')) {
       Array.from(document.querySelector('#locality').options).forEach(o => o.selected = false);
     }
-
-    PAGE = 1; 
+    PAGE = 1;
     apply();
   });
 
-  document.querySelector('#q').addEventListener('input', () => { 
-    PAGE = 1; 
-    apply(); 
+  // Live search as user types
+  document.querySelector('#q')?.addEventListener('input', () => {
+    PAGE = 1;
+    apply();
   });
 }
+
 init();
+
 

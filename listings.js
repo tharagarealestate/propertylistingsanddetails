@@ -179,6 +179,16 @@ async function init() {
     apply();
   });
 
+  // ✅ Pill buttons click
+document.querySelectorAll('.filter-pill').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    PAGE = 1;
+    apply();
+  });
+});
+
   // Reset button click
   document.querySelector('#reset')?.addEventListener('click', () => {
     ['q', 'minPrice', 'maxPrice', 'ptype', 'bhk', 'furnished', 'facing', 'minArea', 'maxArea', 'amenity']

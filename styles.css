@@ -389,3 +389,34 @@ select[multiple] {
   box-shadow: 0 3px 12px rgba(110,13,37,.15) inset;
   background: #f9f3f3;
 }
+
+
+/* --- Filter Pill Row --- */
+.filter-pill-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.filter-pill {
+  flex: 1;
+  text-align: center;
+  padding: 10px 0;
+  border-radius: 999px;
+  border: 1px solid var(--brand);
+  background: #fff;
+  color: var(--brand);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-pill:hover {
+  background: var(--brand-2);
+  color: white;
+}
+
+.filter-pill.active {
+  background: var(--brand);
+  color: white;
+}

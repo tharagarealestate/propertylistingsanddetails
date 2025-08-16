@@ -420,3 +420,9 @@ select[multiple] {
   background: var(--brand);
   color: white;
 }
+
+#map {
+  width: 100%;
+  height: 300px;  /* adjust to your need */
+  border-radius: 8px;
+}

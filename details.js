@@ -73,7 +73,9 @@ async function init(){
   }
 
   // Map
-  if(p.lat && p.lng){
+  if (p.address) {
+    qs('#gmap').src = `https://www.google.com/maps?q=${encodeURIComponent(p.address)}&hl=en&z=15&output=embed`;
+  } else if (p.lat && p.lng) {
     qs('#gmap').src = `https://www.google.com/maps?q=${p.lat},${p.lng}&hl=en&z=15&output=embed`;
   } else {
     qs('#map').style.display = 'none';

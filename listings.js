@@ -213,8 +213,77 @@ document.querySelectorAll('.filter-pill').forEach(btn => {
     PAGE = 1;
     apply();
   });
+
+  // ✅ Update map markers
+if (window.map && window.mapMarkers) {
+  window.mapMarkers.clearLayers();
+
+  slice.forEach(({p}) => {
+    if (p.lat && p.lng) {
+      const marker = L.marker([p.lat, p.lng]).addTo(window.mapMarkers);
+      marker.bindPopup(`
+        <b>${p.title}</b><br>
+        ${p.locality || ''}, ${p.city || ''}
+        <br><a href="details.html?id=${p.id}" target="_blank">View Details</a>
+      `);
+    }
+  });
+
+  if (slice.some(({p}) => p.lat && p.lng)) {
+    const bounds = window.mapMarkers.getBounds();
+    window.map.fitBounds(bounds, { padding: [50, 50] });
+  }
+}
+
 }
 
 init();
 
+// ✅ Initialize Leaflet map (global map)
+window.map = L.map('map').setView([13.0827, 80.2707], 10); // default center: Chennai
+
+// Add OpenStreetMap tiles
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors'
+}).addTo(window.map);
+
+// Create a global marker layer group
+window.mapMarkers = L.layerGroup().addTo(window.map);
+
+// ✅ Function to focus on a property (lat/lng OR address → map)
+async function focusOnMap(lat, lng, title, address) {
+  // Case 1: Use lat/lng if available
+  if (lat && lng && window.map) {
+    window.map.setView([lat, lng], 16);
+    L.popup()
+      .setLatLng([lat, lng])
+      .setContent(`<b>${title}</b><br>${address || ''}`)
+      .openOn(window.map);
+    return;
+  }
+
+  // Case 2: Geocode address if no lat/lng
+  if (address && window.map) {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`);
+      const data = await res.json();
+
+      if (data && data.length > 0) {
+        const { lat, lon } = data[0];
+        window.map.setView([lat, lon], 16);
+        L.popup()
+          .setLatLng([lat, lon])
+          .setContent(`<b>${title}</b><br>${address}`)
+          .openOn(window.map);
+      } else {
+        alert("Couldn't find this address on the map.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error finding location.");
+    }
+  } else {
+    alert("No location info available.");
+  }
+}
 

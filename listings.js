@@ -53,6 +53,10 @@ function activeFilterBadges(filters){
 
 function apply(){
   const q = document.querySelector('#q').value.trim();
+
+  // 🔹 NEW: read active pill
+  const activePill = document.querySelector('.filter-pill.active');
+  const mode = activePill ? (activePill.dataset.type || '').toLowerCase() : '';
   const cityEl = document.querySelector('#city');
   const citySel = cityEl 
     ? Array.from(cityEl.selectedOptions).map(o=>o.value) 
@@ -88,6 +92,12 @@ function apply(){
   });
 
   let filtered = ALL.filter(p=>{
+    // 🔹 NEW: property category filter (expects p.propertyCategory like "Buy"|"Rent"|"Commercial")
+    if (mode) {
+      const pc = String(p.propertyCategory || '').toLowerCase();
+      if (pc !== mode) return false;
+    }
+
     if(q){
       const t = (p.title+' '+p.project+' '+p.city+' '+p.locality+' '+p.address).toLowerCase();
       const pass = q.toLowerCase().split(/\s+/).every(tok=>t.includes(tok));
@@ -214,41 +224,9 @@ document.querySelectorAll('.filter-pill').forEach(btn => {
     apply();
   });
 
-  // ✅ Update map markers
-if (window.map && window.mapMarkers) {
-  window.mapMarkers.clearLayers();
-
-  slice.forEach(({p}) => {
-    if (p.lat && p.lng) {
-      const marker = L.marker([p.lat, p.lng]).addTo(window.mapMarkers);
-      marker.bindPopup(`
-        <b>${p.title}</b><br>
-        ${p.locality || ''}, ${p.city || ''}
-        <br><a href="details.html?id=${p.id}" target="_blank">View Details</a>
-      `);
-    }
-  });
-
-  if (slice.some(({p}) => p.lat && p.lng)) {
-    const bounds = window.mapMarkers.getBounds();
-    window.map.fitBounds(bounds, { padding: [50, 50] });
-  }
-}
-
 }
 
 init();
-
-// ✅ Initialize Leaflet map (global map)
-window.map = L.map('map').setView([13.0827, 80.2707], 10); // default center: Chennai
-
-// Add OpenStreetMap tiles
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; OpenStreetMap contributors'
-}).addTo(window.map);
-
-// Create a global marker layer group
-window.mapMarkers = L.layerGroup().addTo(window.map);
 
 // ✅ Function to focus on a property (lat/lng OR address → map)
 async function focusOnMap(lat, lng, title, address) {

@@ -85,13 +85,10 @@ const App = (() => {
         <div class="row" style="gap:8px;flex-wrap:wrap">${tags}</div>
         <div class="row">
           <a class="btn" href="./details.html?id=${encodeURIComponent(p.id)}">View details</a>
+          <a class="btn secondary" href="./details.html?id=${encodeURIComponent(p.id)}#map">📍 View on Map</a>
           <a class="btn secondary" href="https://wa.me/${(p.owner&&p.owner.whatsapp)||''}?text=Hi%2C%20I%20saw%20${encodeURIComponent(p.title)}%20on%20Tharaga" target="_blank">WhatsApp</a>
-          <!-- ✅ NEW BUTTON ADDED HERE -->
-          <button class="btn secondary" 
-            onclick="focusOnMap(${p.lat || 'null'}, ${p.lng || 'null'}, '${(p.title||'').replace(/'/g, "\\'")}', '${(p.address||'').replace(/'/g, "\\'")}')">
-            📍 View on Map
-          </button>
-          </div>
+        </div>
+
       </div>
     </article>`;
   }

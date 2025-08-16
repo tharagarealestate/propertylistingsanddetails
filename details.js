@@ -72,14 +72,23 @@ async function init(){
     qs('#docs').innerHTML = `<p><a class="btn secondary" href="${p.docsLink}" target="_blank">View Documents</a></p>`;
   }
 
-  // Map
-  if (p.address) {
-    qs('#gmap').src = `https://www.google.com/maps?q=${encodeURIComponent(p.address)}&hl=en&z=15&output=embed`;
+  // Map (Address first → fallback to lat/lng → else hide)
+  const mapWrap = qs('#map');
+  const gmap = qs('#gmap');
+  const openMaps = qs('#openMaps');
+
+  if (p.address && p.address.trim()) {
+    const q = encodeURIComponent(p.address);
+    gmap.src = `https://www.google.com/maps?q=${q}&hl=en&z=15&output=embed`;
+    if (openMaps) openMaps.href = `https://www.google.com/maps/search/?api=1&query=${q}`;
   } else if (p.lat && p.lng) {
-    qs('#gmap').src = `https://www.google.com/maps?q=${p.lat},${p.lng}&hl=en&z=15&output=embed`;
+    const q = `${p.lat},${p.lng}`;
+    gmap.src = `https://www.google.com/maps?q=${q}&hl=en&z=15&output=embed`;
+    if (openMaps) openMaps.href = `https://www.google.com/maps/search/?api=1&query=${q}`;
   } else {
-    qs('#map').style.display = 'none';
+    mapWrap.style.display = 'none';
   }
+
 
   // Owner
   const wa = (p.owner&&p.owner.whatsapp) || p.ownerWhatsapp || '';

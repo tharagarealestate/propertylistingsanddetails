@@ -420,3 +420,13 @@ select[multiple] {
   background: var(--brand);
   color: white;
 }
+
+/* 🔹 Highlight effect when scrolled to map */
+.highlight {
+  animation: highlightFade 2s ease-out;
+}
+
+@keyframes highlightFade {
+  0%   { background-color: yellow; }
+  100% { background-color: transparent; }
+}

@@ -147,5 +147,16 @@ async function init(){
     "seller": { "@type":"Person", "name": (p.owner&&p.owner.name) || "Owner" }
   };
   const s = document.createElement('script'); s.type='application/ld+json'; s.textContent = JSON.stringify(ld); document.head.appendChild(s);
+
+  // 🔹 Highlight map section if user clicked "View on Map"
+  if (location.hash === "#map") {
+    const mapEl = document.querySelector("#map");
+    if (mapEl) {
+      mapEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      mapEl.classList.add("highlight");
+      setTimeout(() => mapEl.classList.remove("highlight"), 2000);
+    }
+  }
+
 }
 init();

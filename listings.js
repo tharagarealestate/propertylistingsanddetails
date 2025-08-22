@@ -147,16 +147,43 @@ function apply(){
 function goto(n){ PAGE = n; apply(); }
 
 async function init() {
-  const data = await App.fetchSheetOrLocal();
-  ALL = (data.properties || []).filter(p => p && p.title && p.title.trim() !== "");
+  // 1️⃣ Try sessionStorage first (from buyer form)
+  try {
+    const stored = sessionStorage.getItem('tharaga_matches_v1');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed.results) && parsed.results.length) {
+        console.log("Loaded matches from buyer form:", parsed.results.length);
+        ALL = parsed.results.map(r => ({
+          ...r,
+          // normalize keys so your filters work
+          title: r.title || r.project || "Property",
+          city: r.city || "",
+          locality: r.locality || "",
+          priceINR: r.price_inr || r.priceINR || 0,
+          bhk: r.bhk || r.bedrooms || "",
+          type: r.property_type || r.type || "",
+          carpetAreaSqft: r.area_sqft || r.carpetAreaSqft || 0,
+          furnished: r.furnished || "",
+          facing: r.facing || ""
+        }));
+      }
+    }
+  } catch(e) {
+    console.error("Error parsing buyer matches:", e);
+  }
 
+  // 2️⃣ Fallback: load from sheet if nothing from buyer form
+  if (!ALL.length) {
+    const data = await App.fetchSheetOrLocal();
+    ALL = (data.properties || []).filter(p => p && p.title && p.title.trim() !== "");
+  }
 
   // ✅ Hydrate city/locality dropdowns if present
   if (document.querySelector('#city')) {
     hydrateCityOptions();
     hydrateLocalityOptions([]); // start empty
   } else if (document.querySelector('#locality')) {
-    // Populate all localities if city filter is not present
     const localities = Array.from(new Set(
       ALL.map(p => p.locality).filter(Boolean)
     )).sort();
@@ -164,7 +191,7 @@ async function init() {
       localities.map(l => `<option>${l}</option>`).join('');
   }
 
-  // 🌟 Read ?city=&q= from URL and prefill inputs
+  // ✅ Pre-fill from URL query (optional)
   (() => {
     const params = new URLSearchParams(location.search);
     const q = params.get("q") || "";
@@ -178,17 +205,14 @@ async function init() {
       [...citySel.options].forEach(o => {
         o.selected = (o.value === c);
       });
-      hydrateLocalityOptions([c]); // ✅ Load localities for preselected city
+      hydrateLocalityOptions([c]);
     }
   })();
 
   apply();
+  wireUI();
+}
 
-  // Apply button click
-  document.querySelector('#apply')?.addEventListener('click', () => {
-    PAGE = 1;
-    apply();
-  });
 
   // ✅ Pill buttons click
 document.querySelectorAll('.filter-pill').forEach(btn => {

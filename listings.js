@@ -262,8 +262,6 @@ document.querySelectorAll('.filter-pill').forEach(btn => {
     apply();
   });
 
-}
-
 init();
 
 // ✅ Function to focus on a property (lat/lng OR address → map)

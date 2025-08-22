@@ -173,6 +173,20 @@ async function init() {
     console.error("Error parsing buyer matches:", e);
   }
 
+  //  Try URL param matchId (AI matches)
+  if (!ALL.length) {
+    const params = new URLSearchParams(location.search);
+    const matchId = params.get("matchId");
+
+    if (matchId) {
+      const row = await fetchMatchesById(matchId);
+      if (row && Array.isArray(row.results)) {
+        console.log("Loaded matches via ID:", matchId, row.results.length);
+        ALL = row.results.map(normalizeProperty);
+      }
+    }
+  }
+
   // 2️⃣ Fallback: load from sheet if nothing from buyer form
   if (!ALL.length) {
     const data = await App.fetchSheetOrLocal();

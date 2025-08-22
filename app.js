@@ -34,7 +34,7 @@ const App = (() => {
     });
   };
 
-  async fetchSheetOrLocal() {
+  async function fetchSheetOrLocal() {
   try {
     const res = await fetch("properties.json");
     if (!res.ok) throw new Error("Failed to load properties.json");

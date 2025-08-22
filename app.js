@@ -34,22 +34,16 @@ const App = (() => {
     });
   };
 
-  async function fetchSheetOrLocal() {
-    const url = (window.CONFIG && window.CONFIG.SHEET_CSV_URL) ? window.CONFIG.SHEET_CSV_URL : null;
-    if (url) {
-      try {
-        const res = await fetch(url, { cache: 'no-store' });
-        if (!res.ok) throw new Error('Sheet fetch failed');
-        const csv = await res.text();
-        const properties = parseCSV(csv);
-        return { properties };
-      } catch(e) {
-        console.warn('Sheet fetch failed, falling back to data.json', e);
-      }
-    }
-    const res = await fetch('./data.json');
+  async fetchSheetOrLocal() {
+  try {
+    const res = await fetch("properties.json");
+    if (!res.ok) throw new Error("Failed to load properties.json");
     return await res.json();
+  } catch (err) {
+    console.error("Error loading properties:", err);
+    return [];
   }
+}
 
   function score(p, q, amenity) {
     let s = 0;

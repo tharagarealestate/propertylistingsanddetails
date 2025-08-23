@@ -123,7 +123,7 @@ async function fetchFromSupabase({ limit = 1000 } = {}) {
     .from("properties")
     .select("*")
     .limit(limit)
-    .order("listed_at", { ascending: false });
+    //.order("listed_at", { ascending: false });
 
   if (error) {
     console.warn("Supabase fetch error:", error);
@@ -282,13 +282,13 @@ function renderListings(listings = [], containerSelector = "#results") {
 // === PRICE RANGE SLIDER – full functionality ===
 document.addEventListener('DOMContentLoaded', () => {
   const root = document.querySelector('.price-range');
-  if (!root) return;
+  if (!root || root.dataset.initialized === '1') return;
+  root.dataset.initialized = '1';
 
-  // Config via data-attributes
   const RANGE_MIN = Number(root.dataset.min ?? 0);
-  const RANGE_MAX = Number(root.dataset.max ?? 20000000);   // 2 Cr
-  const STEP      = Number(root.dataset.step ?? 100000);     // 1 L
-  const GAP       = Number(root.dataset.gap ?? 200000);      // 2 L min gap
+  const RANGE_MAX = Number(root.dataset.max ?? 20000000);
+  const STEP      = Number(root.dataset.step ?? 100000);
+  const GAP       = Number(root.dataset.gap ?? 200000);
 
   const minSlider = document.getElementById('priceMinSlider');
   const maxSlider = document.getElementById('priceMaxSlider');
@@ -297,43 +297,31 @@ document.addEventListener('DOMContentLoaded', () => {
   const minValueDisplay = document.getElementById('minPriceValue');
   const maxValueDisplay = document.getElementById('maxPriceValue');
 
-  // Hidden inputs (keeps your existing filter/apply logic working)
   const minHidden = document.getElementById('minPrice');
   const maxHidden = document.getElementById('maxPrice');
 
-  // Init sliders
   [minSlider, maxSlider].forEach(sl => {
     sl.min = RANGE_MIN;
     sl.max = RANGE_MAX;
     sl.step = STEP;
   });
 
-  // Default values (use existing values if present)
   const startMin = Number(minHidden?.value || RANGE_MIN);
   const startMax = Number(maxHidden?.value || RANGE_MAX);
-
   minSlider.value = Math.max(RANGE_MIN, Math.min(startMin, RANGE_MAX));
   maxSlider.value = Math.max(RANGE_MIN, Math.min(startMax, RANGE_MAX));
 
   function formatINRShort(num) {
-    if (num >= 10000000) { // Crore
-      const v = (num / 10000000);
-      return `₹${(Math.round(v * 10) / 10).toString()}Cr`;
-    }
-    if (num >= 100000) {   // Lakh
-      const v = (num / 100000);
-      return `₹${Math.round(v)}L`;
-    }
+    if (num >= 10000000) return `₹${Math.round((num/10000000)*10)/10}Cr`;
+    if (num >= 100000)   return `₹${Math.round(num/100000)}L`;
     return `₹${num.toLocaleString('en-IN')}`;
   }
 
-  function clampWithGap() {
+  function clampWithGap(which) {
     let a = Number(minSlider.value);
     let b = Number(maxSlider.value);
-
-    // keep thumbs at least GAP apart
     if (b - a < GAP) {
-      if (this === minSlider) {
+      if (which === 'min') {
         a = Math.min(a, RANGE_MAX - GAP);
         b = a + GAP;
         maxSlider.value = b;
@@ -349,37 +337,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const a = Number(minSlider.value);
     const b = Number(maxSlider.value);
 
-    // progress bar left/right via percentages
     const leftPct  = ((a - RANGE_MIN) / (RANGE_MAX - RANGE_MIN)) * 100;
     const rightPct = 100 - ((b - RANGE_MIN) / (RANGE_MAX - RANGE_MIN)) * 100;
-    progress.style.left  = `${leftPct}%`;
-    progress.style.right = `${rightPct}%`;
+    if (progress) {
+      progress.style.left  = `${leftPct}%`;
+      progress.style.right = `${rightPct}%`;
+    }
 
-    // labels
-    minValueDisplay.textContent = formatINRShort(a);
-    maxValueDisplay.textContent = formatINRShort(b);
+    if (minValueDisplay) minValueDisplay.textContent = formatINRShort(a);
+    if (maxValueDisplay) maxValueDisplay.textContent = formatINRShort(b);
 
-    // hidden fields for your existing filters
     if (minHidden) minHidden.value = a;
     if (maxHidden) maxHidden.value = b;
 
-    // If your filter listens to 'input' or 'change', emit one:
-    minHidden?.dispatchEvent(new Event('input', { bubbles: true }));
-    maxHidden?.dispatchEvent(new Event('input', { bubbles: true }));
+    // notify filters listening on input/change
+    minHidden?.dispatchEvent(new Event('input',  { bubbles: true }));
+    maxHidden?.dispatchEvent(new Event('input',  { bubbles: true }));
+    minHidden?.dispatchEvent(new Event('change', { bubbles: true }));
+    maxHidden?.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
-  function onSlide() {
-    clampWithGap.call(this);
-    updateUI();
-  }
+  function onMinSlide() { clampWithGap('min'); updateUI(); }
+  function onMaxSlide() { clampWithGap('max'); updateUI(); }
 
-  minSlider.addEventListener('input', onSlide);
-  maxSlider.addEventListener('input', onSlide);
+  minSlider.addEventListener('input', onMinSlide);
+  maxSlider.addEventListener('input', onMaxSlide);
 
-  // Initialize once
-  clampWithGap.call(maxSlider);
+  clampWithGap('max');
   updateUI();
 });
+
 /* -------------------------- Filtering logic ------------------------ */
 /**
  * Apply filters based on UI controls:
@@ -390,7 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function applyFiltersAndRender() {
   const minHidden = document.getElementById("minPrice");
   const maxHidden = document.getElementById("maxPrice");
-  const searchInput = document.getElementById("q");
+  const searchInput = document.getElementById('q');
   const min = toNumber(minHidden?.value) ?? 0;
   const max = toNumber(maxHidden?.value) ?? Number.POSITIVE_INFINITY;
   const q = (searchInput?.value || "").trim().toLowerCase();
@@ -422,6 +409,12 @@ function debounce(fn, wait = 200) {
 
 /* -------------------------- Bootstrapping -------------------------- */
 async function initAndRender() {
+  try {
+  const test = await supabase.from("properties").select("id, title").limit(1);
+  console.log("TEST select:", test);
+} catch (e) {
+  console.error("TEST select error:", e);
+}
   try {
     // Load data once and cache
     PROPERTIES_CACHE = await fetchProperties();

@@ -1,5 +1,6 @@
-// Paste your Google Sheets "Publish to web" CSV link here.
-// Example: "https://docs.google.com/spreadsheets/d/e/2PACX-.../pub?output=csv"
+// config.js
 window.CONFIG = {
-  SHEET_CSV_URL: "https://script.google.com/macros/s/AKfycbyVNE9P-c_8QwGUo8Ctiw32a11MgHCbLKmQPRH1rQXJCawCRsT-IduO02kzTx6IbDZzTQ/exec" // leave blank to use local data.json (for testing)
+  SUPABASE_URL: "https://wedevtjjmdvngyshqdro.supabase.co",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndlZGV2dGpqbWR2bmd5c2hxZHJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NzYwMzgsImV4cCI6MjA3MTA1MjAzOH0.Ex2c_sx358dFdygUGMVBohyTVto6fdEQ5nydDRh9m6M",  // paste your real anon key
+  SHEET_CSV_URL: null
 };

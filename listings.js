@@ -22,32 +22,28 @@ function hydrateCityOptions(){
   const cities = Array.from(new Set(ALL.map(p=>p.city).filter(Boolean))).sort();
   const sel = document.querySelector('#city');
   if (!sel) return;
-  sel.innerHTML = cities.map(c=>`<option>${c}</option>`).join('');
-
-  // Add event listener to update locality dynamically when city changes
+  sel.innerHTML = `<option value="">All cities</option>` + cities.map(c=>`<option value="${c}">${c}</option>`).join('');
   sel.addEventListener('change', ()=> {
-    const selectedCities = Array.from(sel.selectedOptions).map(o=>o.value);
+    const selectedCities = sel.value ? [sel.value] : [];
     hydrateLocalityOptions(selectedCities);
+    PAGE = 1; apply();
   });
 }
 
-// 🔹 2. NEW FUNCTION — Populates locality options based on selected cities
 function hydrateLocalityOptions(selectedCities){
   const localitySelect = document.querySelector('#locality');
-  if(!localitySelect) return; // in case HTML doesn't have locality dropdown
-
-  if(!selectedCities || selectedCities.length === 0){
-    localitySelect.innerHTML = '';
+  if(!localitySelect) return;
+  if(!selectedCities || selectedCities.length === 0) {
+    const localities = Array.from(new Set(ALL.map(p=>p.locality).filter(Boolean))).sort();
+    localitySelect.innerHTML = `<option value="">All localities</option>` + localities.map(l=>`<option value="${l}">${l}</option>`).join('');
     return;
   }
-
   const localities = Array.from(new Set(
     ALL.filter(p=> selectedCities.includes(p.city))
        .map(p=>p.locality)
        .filter(Boolean)
   )).sort();
-
-  localitySelect.innerHTML = localities.map(l=>`<option>${l}</option>`).join('');
+  localitySelect.innerHTML = `<option value="">All localities</option>` + localities.map(l=>`<option value="${l}">${l}</option>`).join('');
 }
 
 function activeFilterBadges(filters){

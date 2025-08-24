@@ -1,7 +1,7 @@
 /**
  * app.js — Supabase-first property loader + UI glue
  * - ES module (use with <script type="module">)
- * - Exports: fetchProperties, score, cardHTML, currency, fetchSheetOrLocal, fetchMatchesById, normalizeProperty
+ * - Exports: fetchProperties, fetchSheetOrLocal, fetchMatchesById, score, cardHTML, currency, normalizeRow
  *
  * NOTE: Provide config via window.CONFIG { SUPABASE_URL, SUPABASE_ANON_KEY, SHEET_CSV_URL? }
  */
@@ -11,7 +11,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 /* -------------------------- Configuration -------------------------- */
 const CFG = (typeof window !== "undefined" && window.CONFIG) || {};
 const SUPABASE_URL = CFG.SUPABASE_URL || "https://wedevtjjmdvngyshqdro.supabase.co";
-const SUPABASE_ANON_KEY = CFG.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndlZGV2dGpqbWR2bmd5c2hxZHJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NzYwMzgsImV4cCI6MjA3MTA1MjAzOH0.Ex2c_sx358dFdygUGMVBohyTVto6fdEQ5nydDRh9m6M";
+const SUPABASE_ANON_KEY = CFG.SUPABASE_ANON_KEY || "YOUR_ANON_KEY"; // keep secure
 const SHEET_CSV_URL = CFG.SHEET_CSV_URL || null;
 
 /* -------------------------- Supabase client ------------------------ */
@@ -49,14 +49,9 @@ function toArray(val) {
 }
 
 /* -------------------------- Normalizer ----------------------------- */
-/**
- * Convert a Supabase row (or legacy JSON object) into the UI-friendly shape
- */
 function normalizeRow(row = {}) {
-  // Accept both snake_case and camelCase
   const r = (k) => row[k] ?? row[camelToSnake(k)] ?? row[snakeToCamel(k)];
 
-  // helpers for name variants
   function camelToSnake(s) {
     return s.replace(/[A-Z]/g, (m) => "_" + m.toLowerCase());
   }
@@ -71,11 +66,11 @@ function normalizeRow(row = {}) {
     (price_inr && sqft ? Math.round(price_inr / Math.max(1, sqft)) : undefined);
 
   return {
-    id: r("id") || r("id") || undefined,
+    id: r("id") || undefined,
     title: r("title") || r("property_title") || "",
     project: r("project") || "",
     builder: r("builder") || "",
-    listingStatus: r("listingStatus") || r("listing_status") || (r("is_verified") ? (r("is_verified") === true ? "Verified" : "Verified") : ""),
+    listingStatus: r("listingStatus") || r("listing_status") || (r("is_verified") ? "Verified" : ""),
     category: r("category") || "",
     type: r("type") || r("property_type") || "",
     bhk: toNumber(r("bhk")) ?? toNumber(r("bedrooms")),
@@ -108,38 +103,29 @@ function normalizeRow(row = {}) {
   };
 }
 
-/* Add a tiny alias so other code can call normalizeProperty */
-function normalizeProperty(row) {
-  return normalizeRow(row);
-}
+/* Small alias (some code calls normalizeProperty) */
+function normalizeProperty(row) { return normalizeRow(row); }
 
 /* -------------------------- Fetchers ------------------------------- */
-/** Primary: fetch from Supabase -> returns array of normalized properties */
 async function fetchFromSupabase({ limit = 1000 } = {}) {
-  // We load all columns (*) — if your table is huge, implement pagination.
   const { data, error } = await supabase
-    .from("properties")
+    .from("properties")        // ← ensure your table is named "properties" (change if different)
     .select("*")
-    .limit(limit)
-    //.order("listed_at", { ascending: false });
-
+    .limit(limit);
   if (error) {
     console.warn("Supabase fetch error:", error);
     throw error;
   }
   if (!Array.isArray(data)) return [];
-
   return data.map(normalizeRow);
 }
 
-/** Fallback: fetch from Google Sheet CSV (if provided) */
 async function fetchFromSheetCSV() {
   if (!SHEET_CSV_URL) return [];
   try {
     const res = await fetch(SHEET_CSV_URL, { cache: "no-store" });
     if (!res.ok) throw new Error("CSV fetch failed");
     const csv = await res.text();
-    // simple CSV parser (same as your previous)
     const lines = csv.trim().split(/\r?\n/);
     const headers = lines.shift().split(",").map(h => h.trim());
     const rows = lines.map(line => {
@@ -155,13 +141,11 @@ async function fetchFromSheetCSV() {
   }
 }
 
-/** Final fallback: local data.json (for dev) */
 async function fetchFromLocalJSON() {
   try {
     const res = await fetch("./data.json");
     if (!res.ok) throw new Error("data.json fetch failed");
     const json = await res.json();
-    // if json is { properties: [..] } or array
     const arr = Array.isArray(json) ? json : (Array.isArray(json.properties) ? json.properties : []);
     return arr.map(normalizeRow);
   } catch (e) {
@@ -170,11 +154,7 @@ async function fetchFromLocalJSON() {
   }
 }
 
-/**
- * fetchSheetOrLocal()
- * - used by listings.js when Supabase isn't used
- * returns { properties: [...] }
- */
+/** Wrapper used by listings when no DB available — returns object with properties[] */
 async function fetchSheetOrLocal() {
   const sheet = await fetchFromSheetCSV();
   if (sheet && sheet.length) return { properties: sheet };
@@ -182,25 +162,17 @@ async function fetchSheetOrLocal() {
   return { properties: local };
 }
 
-/**
- * fetchMatchesById()
- * - attempts /api endpoints first, falls back to ai_matches table in Supabase
- */
+/** Try to fetch matches by id from /api endpoints OR from a possible ai_matches table */
 async function fetchMatchesById(matchId) {
   if (!matchId) return null;
-
-  // try API endpoints (if you have server endpoints)
   try {
     const r1 = await fetch(`/api/matches/${encodeURIComponent(matchId)}`);
     if (r1.ok) return await r1.json();
-  } catch (e) { /* ignore */ }
-
+  } catch (e) {}
   try {
     const r2 = await fetch(`/api/matches?id=${encodeURIComponent(matchId)}`);
     if (r2.ok) return await r2.json();
-  } catch (e) { /* ignore */ }
-
-  // fallback to ai_matches table in Supabase (if exists)
+  } catch (e) {}
   try {
     const { data, error } = await supabase.from("ai_matches").select("results").eq("id", matchId).limit(1);
     if (error) { console.warn("ai_matches table lookup error:", error); return null; }
@@ -208,43 +180,30 @@ async function fetchMatchesById(matchId) {
   } catch (e) {
     console.warn("fetchMatchesById supabase fallback error:", e);
   }
-
   return null;
 }
 
-/**
- * fetchProperties()
- * - primary: supabase
- * - fallbacks: sheet csv, local json
- * returns Array of normalized properties (not wrapped)
- */
+/** Primary: tries Supabase first, falls back to sheet/local */
 async function fetchProperties() {
-  // try supabase first
   try {
     const supa = await fetchFromSupabase();
     if (supa && supa.length) return supa;
   } catch (e) {
     // continue to fallback
   }
-
-  // try sheet
   const sheet = await fetchFromSheetCSV();
   if (sheet && sheet.length) return sheet;
-
-  // try local json
   return await fetchFromLocalJSON();
 }
 
-/* -------------------------- In-memory cache ------------------------ */
-let PROPERTIES_CACHE = [];   // array of normalized property objects
+/* --------------------------- Scoring & card HTML ----------------------------- */
+/* (kept your original scoring & card generator) */
 
-/* -------------------------- Filtering & rendering ------------------ */
-/** Score function kept mostly as-is to compute ranking */
 function score(p, q = "", amenity = "") {
   let s = 0;
-  const text = (p.title + " " + p.project + " " + p.city + " " + p.locality).toLowerCase();
+  const text = ((p.title || "") + " " + (p.project || "") + " " + (p.city || "") + " " + (p.locality || "")).toLowerCase();
   if (q) {
-    q.split(/\s+/).forEach((tok) => { if (text.includes(tok.toLowerCase())) s += 8; });
+    q.split(/\s+/).forEach((tok) => { if (tok && text.includes(tok.toLowerCase())) s += 8; });
   }
   if (p.postedAt) {
     const days = (Date.now() - new Date(p.postedAt).getTime())/86400000;
@@ -261,17 +220,25 @@ function score(p, q = "", amenity = "") {
   return s;
 }
 
-/** Card HTML generator — unchanged shape so your UI remains the same */
+function escapeHtml(s) {
+  if (!s && s !== 0) return "";
+  return String(s)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
 function cardHTML(p, s) {
   const img = (p.images && p.images[0]) || "";
   const tags = [`${p.bhk||''} BHK`, `${p.carpetAreaSqft||'-'} sqft`, p.furnished||'', p.facing?`Facing ${p.facing}`:'' ]
-    .filter(Boolean).map(t=>`<span class="tag">${t}</span>`).join(' ');
+    .filter(Boolean).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join(' ');
   const price = p.priceDisplay || (p.priceINR ? currency(p.priceINR) : 'Price on request');
-  const pps = p.pricePerSqftINR ? `₹${p.pricePerSqftINR.toLocaleString('en-IN')}/sqft` : '';
-  return `<article class="card" style="display:flex;flex-direction:column">
+  const pps = p.pricePerSqftINR ? `₹${Number(p.pricePerSqftINR).toLocaleString('en-IN')}/sqft` : '';
+  return `<article class="card" data-id="${escapeHtml(p.id)}" style="display:flex;flex-direction:column">
     <div class="card-img">
       <img src="${escapeHtml(img)}" alt="${escapeHtml(p.title)}">
-      <div class="badge ribbon">${p.listingStatus || "Verified"}</div>
+      <div class="badge ribbon">${escapeHtml(p.listingStatus || "Verified")}</div>
       <div class="tag score">Match ${Math.round((s/30)*100)}%</div>
     </div>
     <div style="padding:14px;display:flex;gap:12px;flex-direction:column">
@@ -293,24 +260,15 @@ function cardHTML(p, s) {
   </article>`;
 }
 
-/** Small HTML escape to avoid broken HTML when rendering user data */
-function escapeHtml(s) {
-  if (!s && s !== 0) return "";
-  return String(s)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-}
+/* -------------------------- Minimal local cache & render ------------------------ */
+let PROPERTIES_CACHE = [];
 
-/** Render listing array into given container selector */
 function renderListings(listings = [], containerSelector = "#results") {
   const container = document.querySelector(containerSelector);
   if (!container) {
     console.warn("renderListings: container not found:", containerSelector);
     return;
   }
-  // Build HTML
   const html = listings.map(p => {
     const s = score(p, (document.getElementById('q')?.value || ""), "");
     return cardHTML(p, s);
@@ -318,136 +276,98 @@ function renderListings(listings = [], containerSelector = "#results") {
   container.innerHTML = html || `<div class="empty">No properties found</div>`;
 }
 
-// === PRICE RANGE SLIDER HANDLER ===
-// === PRICE RANGE SLIDER – full functionality ===
+/* -------------------------- Price slider (kept as you had) ------------------------ */
+// (kept your DOMContentLoaded slider initialization exactly as before)
 document.addEventListener('DOMContentLoaded', () => {
   const root = document.querySelector('.price-range');
   if (!root || root.dataset.initialized === '1') return;
   root.dataset.initialized = '1';
+  try {
+    const RANGE_MIN = Number(root.dataset.min ?? 0);
+    const RANGE_MAX = Number(root.dataset.max ?? 20000000);
+    const STEP      = Number(root.dataset.step ?? 100000);
+    const GAP       = Number(root.dataset.gap ?? 200000);
 
-  const RANGE_MIN = Number(root.dataset.min ?? 0);
-  const RANGE_MAX = Number(root.dataset.max ?? 20000000);
-  const STEP      = Number(root.dataset.step ?? 100000);
-  const GAP       = Number(root.dataset.gap ?? 200000);
+    const minSlider = document.getElementById('priceMinSlider');
+    const maxSlider = document.getElementById('priceMaxSlider');
+    const progress  = root.querySelector('.range-progress');
 
-  const minSlider = document.getElementById('priceMinSlider');
-  const maxSlider = document.getElementById('priceMaxSlider');
-  const progress  = root.querySelector('.range-progress');
+    const minValueDisplay = document.getElementById('minPriceValue');
+    const maxValueDisplay = document.getElementById('maxPriceValue');
 
-  const minValueDisplay = document.getElementById('minPriceValue');
-  const maxValueDisplay = document.getElementById('maxPriceValue');
+    const minHidden = document.getElementById('minPrice');
+    const maxHidden = document.getElementById('maxPrice');
 
-  const minHidden = document.getElementById('minPrice');
-  const maxHidden = document.getElementById('maxPrice');
+    [minSlider, maxSlider].forEach(sl => {
+      sl.min = RANGE_MIN;
+      sl.max = RANGE_MAX;
+      sl.step = STEP;
+    });
 
-  [minSlider, maxSlider].forEach(sl => {
-    sl.min = RANGE_MIN;
-    sl.max = RANGE_MAX;
-    sl.step = STEP;
-  });
+    const startMin = Number(minHidden?.value || RANGE_MIN);
+    const startMax = Number(maxHidden?.value || RANGE_MAX);
+    minSlider.value = Math.max(RANGE_MIN, Math.min(startMin, RANGE_MAX));
+    maxSlider.value = Math.max(RANGE_MIN, Math.min(startMax, RANGE_MAX));
 
-  const startMin = Number(minHidden?.value || RANGE_MIN);
-  const startMax = Number(maxHidden?.value || RANGE_MAX);
-  minSlider.value = Math.max(RANGE_MIN, Math.min(startMin, RANGE_MAX));
-  maxSlider.value = Math.max(RANGE_MIN, Math.min(startMax, RANGE_MAX));
+    function formatINRShort(num) {
+      if (num >= 10000000) return `₹${Math.round((num/10000000)*10)/10}Cr`;
+      if (num >= 100000)   return `₹${Math.round(num/100000)}L`;
+      return `₹${num.toLocaleString('en-IN')}`;
+    }
 
-  function formatINRShort(num) {
-    if (num >= 10000000) return `₹${Math.round((num/10000000)*10)/10}Cr`;
-    if (num >= 100000)   return `₹${Math.round(num/100000)}L`;
-    return `₹${num.toLocaleString('en-IN')}`;
-  }
-
-  function clampWithGap(which) {
-    let a = Number(minSlider.value);
-    let b = Number(maxSlider.value);
-    if (b - a < GAP) {
-      if (which === 'min') {
-        a = Math.min(a, RANGE_MAX - GAP);
-        b = a + GAP;
-        maxSlider.value = b;
-      } else {
-        b = Math.max(b, RANGE_MIN + GAP);
-        a = b - GAP;
-        minSlider.value = a;
+    function clampWithGap(which) {
+      let a = Number(minSlider.value);
+      let b = Number(maxSlider.value);
+      if (b - a < GAP) {
+        if (which === 'min') {
+          a = Math.min(a, RANGE_MAX - GAP);
+          b = a + GAP;
+          maxSlider.value = b;
+        } else {
+          b = Math.max(b, RANGE_MIN + GAP);
+          a = b - GAP;
+          minSlider.value = a;
+        }
       }
     }
-  }
 
-  function updateUI() {
-    const a = Number(minSlider.value);
-    const b = Number(maxSlider.value);
+    function updateUI() {
+      const a = Number(minSlider.value);
+      const b = Number(maxSlider.value);
 
-    const leftPct  = ((a - RANGE_MIN) / (RANGE_MAX - RANGE_MIN)) * 100;
-    const rightPct = 100 - ((b - RANGE_MIN) / (RANGE_MAX - RANGE_MIN)) * 100;
-    if (progress) {
-      progress.style.left  = `${leftPct}%`;
-      progress.style.right = `${rightPct}%`;
+      const leftPct  = ((a - RANGE_MIN) / (RANGE_MAX - RANGE_MIN)) * 100;
+      const rightPct = 100 - ((b - RANGE_MIN) / (RANGE_MAX - RANGE_MIN)) * 100;
+      if (progress) {
+        progress.style.left  = `${leftPct}%`;
+        progress.style.right = `${rightPct}%`;
+      }
+
+      if (minValueDisplay) minValueDisplay.textContent = formatINRShort(a);
+      if (maxValueDisplay) maxValueDisplay.textContent = formatINRShort(b);
+
+      if (minHidden) minHidden.value = a;
+      if (maxHidden) maxHidden.value = b;
+
+      minHidden?.dispatchEvent(new Event('input',  { bubbles: true }));
+      maxHidden?.dispatchEvent(new Event('input',  { bubbles: true }));
+      minHidden?.dispatchEvent(new Event('change', { bubbles: true }));
+      maxHidden?.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
-    if (minValueDisplay) minValueDisplay.textContent = formatINRShort(a);
-    if (maxValueDisplay) maxValueDisplay.textContent = formatINRShort(b);
+    function onMinSlide() { clampWithGap('min'); updateUI(); }
+    function onMaxSlide() { clampWithGap('max'); updateUI(); }
 
-    if (minHidden) minHidden.value = a;
-    if (maxHidden) maxHidden.value = b;
+    minSlider.addEventListener('input', onMinSlide);
+    maxSlider.addEventListener('input', onMaxSlide);
 
-    // notify filters listening on input/change
-    minHidden?.dispatchEvent(new Event('input',  { bubbles: true }));
-    maxHidden?.dispatchEvent(new Event('input',  { bubbles: true }));
-    minHidden?.dispatchEvent(new Event('change', { bubbles: true }));
-    maxHidden?.dispatchEvent(new Event('change', { bubbles: true }));
+    clampWithGap('max');
+    updateUI();
+  } catch (err) {
+    console.warn("Slider init error:", err);
   }
-
-  function onMinSlide() { clampWithGap('min'); updateUI(); }
-  function onMaxSlide() { clampWithGap('max'); updateUI(); }
-
-  minSlider.addEventListener('input', onMinSlide);
-  maxSlider.addEventListener('input', onMaxSlide);
-
-  clampWithGap('max');
-  updateUI();
 });
 
-/* -------------------------- Filtering logic ------------------------ */
-/**
- * Apply filters based on UI controls:
- * - price range (hidden inputs with ids: minPrice, maxPrice)
- * - search text (input#searchInput)
- * - city/locality filters (optional)
- */
-function applyFiltersAndRender() {
-  const minHidden = document.getElementById("minPrice");
-  const maxHidden = document.getElementById("maxPrice");
-  const searchInput = document.getElementById('q');
-  const min = toNumber(minHidden?.value) ?? 0;
-  const max = toNumber(maxHidden?.value) ?? Number.POSITIVE_INFINITY;
-  const q = (searchInput?.value || "").trim().toLowerCase();
-
-  const filtered = PROPERTIES_CACHE.filter(p => {
-    const price = p.priceINR ?? 0;
-    if (price < min || price > max) return false;
-    if (q) {
-      const hay = (p.title + " " + p.project + " " + p.locality + " " + p.city + " " + (p.summary || "")).toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    return true;
-  });
-
-  // sort by score descending
-  filtered.sort((a, b) => score(b, q) - score(a, q));
-
-  renderListings(filtered);
-}
-
-/* Debounce helper */
-function debounce(fn, wait = 200) {
-  let t;
-  return (...args) => {
-    clearTimeout(t);
-    t = setTimeout(() => fn(...args), wait);
-  };
-}
-
-/* -------------------------- Bootstrapping -------------------------- */
+/* -------------------------- Bootstrapping (kept as-is) -------------------------- */
 async function initAndRender() {
   try {
     const test = await supabase.from("properties").select("id, title").limit(1);
@@ -456,34 +376,35 @@ async function initAndRender() {
     console.error("TEST select error:", e);
   }
   try {
-    // Load data once and cache
     PROPERTIES_CACHE = await fetchProperties();
+    // expose to window for debugging (optional)
+    window.__THARAGA__ = window.__THARAGA__ || {};
+    window.__THARAGA__.properties = PROPERTIES_CACHE;
+    console.log("Loaded properties count:", (PROPERTIES_CACHE||[]).length);
   } catch (e) {
     console.error("Failed to load properties:", e);
     PROPERTIES_CACHE = [];
   }
 
-  // initial render
-  applyFiltersAndRender();
-
-  // Hook UI events for live updates:
-  const minHidden = document.getElementById("minPrice");
-  const maxHidden = document.getElementById("maxPrice");
-  const searchInput = document.getElementById("q");
-
-  // The price slider logic dispatches 'input' events on minHidden/maxHidden already.
-  if (minHidden) minHidden.addEventListener("input", debounce(applyFiltersAndRender, 50));
-  if (maxHidden) maxHidden.addEventListener("input", debounce(applyFiltersAndRender, 50));
-  if (searchInput) searchInput.addEventListener("input", debounce(applyFiltersAndRender, 200));
+  // initial render (safe)
+  renderListings(PROPERTIES_CACHE);
 }
 
-/* Init on DOM ready */
+/* Init on DOM ready (kept) */
 if (typeof document !== "undefined") {
   document.addEventListener("DOMContentLoaded", () => {
-    // safe init
     initAndRender().catch(err => console.error("init error:", err));
   });
 }
 
 /* -------------------------- Exports ------------------------------- */
-export { fetchProperties, fetchSheetOrLocal, fetchMatchesById, score, cardHTML, currency, normalizeRow, normalizeProperty };
+export {
+  fetchProperties,
+  fetchSheetOrLocal,
+  fetchMatchesById,
+  score,
+  cardHTML,
+  currency,
+  normalizeRow,
+  normalizeProperty
+};

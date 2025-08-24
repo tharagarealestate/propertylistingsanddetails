@@ -1,30 +1,33 @@
 // listings.js — UI controller (uses app.js utilities)
-// I added an import and small safe-guards so existing code works without modification.
-
-import * as App from './app.js?v=20250823'; // added: import the data/util module
+import * as App from './app.js?v=20250823'; // small, safe import so App.* calls work
 
 const PAGE_SIZE = 9;
 let ALL = [];
 let PAGE = 1;
 
-function el(html){ 
-  const t = document.createElement('template'); 
-  t.innerHTML = html.trim(); 
-  return t.content.firstChild; 
+function el(html){
+  const t = document.createElement('template');
+  t.innerHTML = html.trim();
+  return t.content.firstChild;
 }
 
-// Safe aliases for functions that sometimes live in app.js or server API
-const fetchMatchesById = (typeof App.fetchMatchesById === 'function') ? App.fetchMatchesById : async (id) => null;
-const normalizeProperty = (typeof App.normalizeRow === 'function') ? App.normalizeRow : (r) => r;
+/* ------------------ Local debounce (used by wireUI) ------------------ */
+function debounceLocal(fn, wait = 150) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), wait);
+  };
+}
 
-// 🔹 1. CHANGED — Added locality filter population
+/* ---------- hydrate city/locality helpers (keeps your logic) ---------- */
 function hydrateCityOptions(){
   const cities = Array.from(new Set(ALL.map(p=>p.city).filter(Boolean))).sort();
   const sel = document.querySelector('#city');
   if (!sel) return;
-  sel.innerHTML = `<option value="">All cities</option>` + cities.map(c=>`<option value="${c}">${c}</option>`).join('');
+  sel.innerHTML = cities.map(c=>`<option value="${c}">${c}</option>`).join('');
   sel.addEventListener('change', ()=> {
-    const selectedCities = sel.value ? [sel.value] : [];
+    const selectedCities = Array.from(sel.selectedOptions).map(o=>o.value);
     hydrateLocalityOptions(selectedCities);
     PAGE = 1; apply();
   });
@@ -33,9 +36,8 @@ function hydrateCityOptions(){
 function hydrateLocalityOptions(selectedCities){
   const localitySelect = document.querySelector('#locality');
   if(!localitySelect) return;
-  if(!selectedCities || selectedCities.length === 0) {
-    const localities = Array.from(new Set(ALL.map(p=>p.locality).filter(Boolean))).sort();
-    localitySelect.innerHTML = `<option value="">All localities</option>` + localities.map(l=>`<option value="${l}">${l}</option>`).join('');
+  if(!selectedCities || selectedCities.length === 0){
+    localitySelect.innerHTML = '';
     return;
   }
   const localities = Array.from(new Set(
@@ -43,9 +45,10 @@ function hydrateLocalityOptions(selectedCities){
        .map(p=>p.locality)
        .filter(Boolean)
   )).sort();
-  localitySelect.innerHTML = `<option value="">All localities</option>` + localities.map(l=>`<option value="${l}">${l}</option>`).join('');
+  localitySelect.innerHTML = localities.map(l=>`<option value="${l}">${l}</option>`).join('');
 }
 
+/* ---------- active filter badges ---------- */
 function activeFilterBadges(filters){
   const wrap = document.querySelector('#activeFilters');
   if (!wrap) return;
@@ -57,19 +60,16 @@ function activeFilterBadges(filters){
   wrap.innerHTML = parts.join(' ');
 }
 
+/* ---------- the core apply() — uses App.cardHTML & App.score ---------- */
 function apply(){
   const q = (document.querySelector('#q')?.value || "").trim();
 
-  // 🔹 NEW: read active pill
   const activePill = document.querySelector('.filter-pill.active');
   const mode = activePill ? (activePill.dataset.type || '').toLowerCase() : '';
   const cityEl = document.querySelector('#city');
-  const citySel = cityEl 
-    ? Array.from(cityEl.selectedOptions).map(o=>o.value) 
-    : [];
+  const citySel = cityEl ? Array.from(cityEl.selectedOptions).map(o=>o.value) : [];
 
-  // 🔹 3. CHANGED — Added locality filter usage
-  const localitySel = document.querySelector('#locality') 
+  const localitySel = document.querySelector('#locality')
     ? Array.from(document.querySelector('#locality').selectedOptions).map(o=>o.value)
     : [];
 
@@ -85,35 +85,30 @@ function apply(){
   const sort = document.querySelector('#sort')?.value || 'relevance';
 
   activeFilterBadges({
-    q, 
-    city: citySel, 
-    locality: localitySel, // 🔹 4. NEW — Show locality in badges
-    price:`${minP||''}-${maxP||''}`, 
-    type: ptype, 
-    bhk, 
-    furnished, 
-    facing, 
-    area:`${minA||''}-${maxA||''}`, 
+    q,
+    city: citySel,
+    locality: localitySel,
+    price:`${minP||''}-${maxP||''}`,
+    type: ptype,
+    bhk,
+    furnished,
+    facing,
+    area:`${minA||''}-${maxA||''}`,
     amenity
   });
 
   let filtered = ALL.filter(p=>{
-    // 🔹 NEW: property category filter (expects p.propertyCategory like "Buy"|"Rent"|"Commercial")
     if (mode) {
       const pc = String(p.propertyCategory || p.category || '').toLowerCase();
       if (pc !== mode) return false;
     }
-
     if(q){
-      const t = (p.title+' '+p.project+' '+p.city+' '+p.locality+' '+p.address).toLowerCase();
+      const t = (p.title+' '+p.project+' '+p.city+' '+p.locality+' '+(p.address||'')).toLowerCase();
       const pass = q.toLowerCase().split(/\s+/).every(tok=>t.includes(tok));
       if(!pass) return false;
     }
     if(citySel.length && !citySel.includes(p.city)) return false;
-
-    // 🔹 5. NEW — Locality filter condition
     if(localitySel.length && !localitySel.includes(p.locality)) return false;
-
     if(minP && (p.priceINR||0) < minP) return false;
     if(maxP && (p.priceINR||0) > maxP) return false;
     if(ptype && p.type !== ptype) return false;
@@ -157,94 +152,143 @@ function apply(){
 
 function goto(n){ PAGE = n; apply(); }
 
+/* ------------------- wireUI: attach listeners for apply/reset/inputs ------------------- */
+function wireUI(){
+  // Apply button
+  document.querySelector('#apply')?.addEventListener('click', () => { PAGE = 1; apply(); });
+
+  // Reset button already wired lower in file; but ensure slider inputs trigger apply
+  const minHidden = document.getElementById('minPrice');
+  const maxHidden = document.getElementById('maxPrice');
+  const debApply = debounceLocal(()=>{ PAGE=1; apply(); }, 120);
+  minHidden?.addEventListener('input', debApply);
+  maxHidden?.addEventListener('input', debApply);
+
+  // generic selects & inputs
+  ['#sort','#ptype','#bhk','#furnished','#facing','#city','#locality'].forEach(sel => {
+    document.querySelector(sel)?.addEventListener('change', () => { PAGE = 1; apply(); });
+  });
+  document.querySelector('#minArea')?.addEventListener('input', debApply);
+  document.querySelector('#maxArea')?.addEventListener('input', debApply);
+  document.querySelector('#amenity')?.addEventListener('input', debApply);
+
+  // pager delegation
+  document.querySelector('#pager')?.addEventListener('click', (e)=>{
+    const b = e.target.closest('button');
+    if (!b) return;
+    const n = Number(b.textContent);
+    if (n) goto(n);
+  });
+}
+
+/* -------------------------- init() — load data in the order buyer->matchId->supabase->sheet/local -------------------------- */
 async function init() {
-  // 1️⃣ Try sessionStorage first (from buyer form)
+  // 1) Try sessionStorage matches (from buyer form)
   try {
     const stored = sessionStorage.getItem('tharaga_matches_v1');
     if (stored) {
       const parsed = JSON.parse(stored);
       if (Array.isArray(parsed.results) && parsed.results.length) {
         console.log("Loaded matches from buyer form:", parsed.results.length);
-        ALL = parsed.results.map(r => (App.normalizeRow ? App.normalizeRow(r) : {
-          ...r,
-          title: r.title || r.project || "Property",
-          city: r.city || "",
-          locality: r.locality || "",
-          priceINR: r.price_inr || r.priceINR || 0,
-          bhk: r.bhk || r.bedrooms || "",
-          type: r.property_type || r.type || "",
-          carpetAreaSqft: r.area_sqft || r.carpetAreaSqft || 0,
-          furnished: r.furnished || "",
-          facing: r.facing || ""
-        }));
+        ALL = parsed.results.map(r => App.normalizeRow ? App.normalizeRow(r) : (normalizeRowFallback(r)));
       }
     }
   } catch(e) {
     console.error("Error parsing buyer matches:", e);
   }
 
-  //  Try URL param matchId (AI matches)
+  // 2) Try URL param matchId (AI matches)
   if (!ALL.length) {
     const params = new URLSearchParams(location.search);
     const matchId = params.get("matchId");
-
-    if (matchId) {
-      const row = await fetchMatchesById(matchId);
-      if (row && Array.isArray(row.results)) {
-        console.log("Loaded matches via ID:", matchId, row.results.length);
-        ALL = row.results.map(normalizeProperty);
+    if (matchId && typeof App.fetchMatchesById === 'function') {
+      try {
+        const row = await App.fetchMatchesById(matchId);
+        if (row && Array.isArray(row.results)) {
+          console.log("Loaded matches via ID:", matchId, row.results.length);
+          ALL = row.results.map(r => App.normalizeRow ? App.normalizeRow(r) : normalizeRowFallback(r));
+        }
+      } catch (e) {
+        console.error("fetchMatchesById error:", e);
       }
     }
   }
 
-  // 2️⃣ Fallback: load from sheet if nothing from buyer form
+  // 3) Try Supabase (primary)
   if (!ALL.length) {
     try {
-      const data = await App.fetchSheetOrLocal();
-      ALL = (data.properties || []).filter(p => p && p.title && p.title.trim() !== "");
+      if (typeof App.fetchProperties === 'function') {
+        const supa = await App.fetchProperties();
+        if (Array.isArray(supa) && supa.length) {
+          ALL = supa; // already normalized in app.js
+          console.log("Loaded properties from Supabase:", ALL.length);
+        }
+      }
+    } catch (e) {
+      console.warn("Supabase fetch failed, will try sheet/local:", e);
+    }
+  }
+
+  // 4) Fallback: sheet/local
+  if (!ALL.length) {
+    try {
+      const data = (typeof App.fetchSheetOrLocal === 'function') ? await App.fetchSheetOrLocal() : { properties: [] };
+      ALL = (data.properties || []).filter(p => p && (p.title || p.property_title));
+      console.log("Loaded properties from sheet/local:", ALL.length);
     } catch (e) {
       console.error("Error loading sheet/local fallback:", e);
       ALL = [];
     }
   }
 
-  // ✅ Hydrate city/locality dropdowns if present
+  // Hydrate dropdowns
   if (document.querySelector('#city')) {
     hydrateCityOptions();
     hydrateLocalityOptions([]); // start empty
   } else if (document.querySelector('#locality')) {
-    const localities = Array.from(new Set(
-      ALL.map(p => p.locality).filter(Boolean)
-    )).sort();
+    const localities = Array.from(new Set(ALL.map(p => p.locality).filter(Boolean))).sort();
     const locEl = document.querySelector('#locality');
-    if (locEl) locEl.innerHTML =
-      localities.map(l => `<option>${l}</option>`).join('');
+    if (locEl) locEl.innerHTML = localities.map(l => `<option value="${l}">${l}</option>`).join('');
   }
 
-  // ✅ Pre-fill from URL query (optional)
+  // Pre-fill from URL query
   (() => {
     const params = new URLSearchParams(location.search);
     const q = params.get("q") || "";
     const c = params.get("city") || "";
-
-    const qBox = document.querySelector("#q");
-    if (qBox) qBox.value = q;
-
+    const qBox = document.querySelector("#q"); if (qBox) qBox.value = q;
     const citySel = document.querySelector("#city");
     if (citySel && c) {
-      [...citySel.options].forEach(o => {
-        o.selected = (o.value === c);
-      });
+      [...citySel.options].forEach(o => { o.selected = (o.value === c); });
       hydrateLocalityOptions([c]);
     }
   })();
 
-  apply();
+  // Wire UI and render
   wireUI();
+  apply();
 }
 
+/* small fallback normalizer if App.normalizeRow missing */
+function normalizeRowFallback(r){
+  return {
+    id: r.id || r._id || r.ID || '',
+    title: r.title || r.property_title || 'Property',
+    project: r.project || '',
+    city: r.city || '',
+    locality: r.locality || '',
+    priceINR: r.price_inr || r.priceINR || 0,
+    bhk: r.bhk || r.bedrooms || '',
+    type: r.property_type || r.type || '',
+    carpetAreaSqft: r.area_sqft || r.carpetAreaSqft || 0,
+    furnished: r.furnished || '',
+    facing: r.facing || '',
+    amenities: r.amenities || r.amenities_array || []
+  };
+}
 
-// ✅ Pill buttons click
+/* ------------------ DOM event handlers already present in original file (kept) ------------------ */
+// Pill buttons
 document.querySelectorAll('.filter-pill').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
@@ -254,14 +298,13 @@ document.querySelectorAll('.filter-pill').forEach(btn => {
   });
 });
 
-// Reset button click
+// Reset button (kept)
 document.querySelector('#reset')?.addEventListener('click', () => {
   ['q', 'minPrice', 'maxPrice', 'ptype', 'bhk', 'furnished', 'facing', 'minArea', 'maxArea', 'amenity']
     .forEach(id => {
       const el = document.querySelector('#' + id);
       if (el) el.value = '';
     });
-
   if (document.querySelector('#city')) {
     Array.from(document.querySelector('#city').options).forEach(o => o.selected = false);
   }
@@ -272,47 +315,10 @@ document.querySelector('#reset')?.addEventListener('click', () => {
   apply();
 });
 
-// Live search as user types
+// Live search on q
 document.querySelector('#q')?.addEventListener('input', () => {
   PAGE = 1;
   apply();
 });
 
 init();
-
-// ✅ Function to focus on a property (lat/lng OR address → map)
-async function focusOnMap(lat, lng, title, address) {
-  // Case 1: Use lat/lng if available
-  if (lat && lng && window.map) {
-    window.map.setView([lat, lng], 16);
-    L.popup()
-      .setLatLng([lat, lng])
-      .setContent(`<b>${title}</b><br>${address || ''}`)
-      .openOn(window.map);
-    return;
-  }
-
-  // Case 2: Geocode address if no lat/lng
-  if (address && window.map) {
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`);
-      const data = await res.json();
-
-      if (data && data.length > 0) {
-        const { lat, lon } = data[0];
-        window.map.setView([lat, lon], 16);
-        L.popup()
-          .setLatLng([lat, lon])
-          .setContent(`<b>${title}</b><br>${address}`)
-          .openOn(window.map);
-      } else {
-        alert("Couldn't find this address on the map.");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Error finding location.");
-    }
-  } else {
-    alert("No location info available.");
-  }
-}

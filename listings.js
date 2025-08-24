@@ -1,97 +1,123 @@
-// listings.js — UI controller (ES module)
-// Imports the data/util module (app.js) and runs the UI init.
+// listings.js — UI controller (uses app.js utilities)
+// I added an import and small safe-guards so existing code works without modification.
 
-import * as App from './app.js?v=20250823';
+import * as App from './app.js?v=20250823'; // added: import the data/util module
 
 const PAGE_SIZE = 9;
 let ALL = [];
 let PAGE = 1;
 
-function el(html){ const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstChild; }
+function el(html){ 
+  const t = document.createElement('template'); 
+  t.innerHTML = html.trim(); 
+  return t.content.firstChild; 
+}
 
-/* -------------------- City / Locality helpers -------------------- */
+// Safe aliases for functions that sometimes live in app.js or server API
+const fetchMatchesById = (typeof App.fetchMatchesById === 'function') ? App.fetchMatchesById : async (id) => null;
+const normalizeProperty = (typeof App.normalizeRow === 'function') ? App.normalizeRow : (r) => r;
+
+// 🔹 1. CHANGED — Added locality filter population
 function hydrateCityOptions(){
   const cities = Array.from(new Set(ALL.map(p=>p.city).filter(Boolean))).sort();
   const sel = document.querySelector('#city');
   if (!sel) return;
-  sel.innerHTML = `<option value="">All cities</option>` + cities.map(c=>`<option value="${c}">${c}</option>`).join('');
+  sel.innerHTML = cities.map(c=>`<option>${c}</option>`).join('');
+
+  // Add event listener to update locality dynamically when city changes
   sel.addEventListener('change', ()=> {
-    const selectedCities = sel.value ? [sel.value] : [];
+    const selectedCities = Array.from(sel.selectedOptions).map(o=>o.value);
     hydrateLocalityOptions(selectedCities);
-    PAGE = 1; apply();
   });
 }
 
+// 🔹 2. NEW FUNCTION — Populates locality options based on selected cities
 function hydrateLocalityOptions(selectedCities){
   const localitySelect = document.querySelector('#locality');
-  if(!localitySelect) return;
-  if(!selectedCities || selectedCities.length === 0) {
-    const localities = Array.from(new Set(ALL.map(p=>p.locality).filter(Boolean))).sort();
-    localitySelect.innerHTML = `<option value="">All localities</option>` + localities.map(l=>`<option value="${l}">${l}</option>`).join('');
+  if(!localitySelect) return; // in case HTML doesn't have locality dropdown
+
+  if(!selectedCities || selectedCities.length === 0){
+    localitySelect.innerHTML = '';
     return;
   }
+
   const localities = Array.from(new Set(
     ALL.filter(p=> selectedCities.includes(p.city))
        .map(p=>p.locality)
        .filter(Boolean)
   )).sort();
-  localitySelect.innerHTML = `<option value="">All localities</option>` + localities.map(l=>`<option value="${l}">${l}</option>`).join('');
+
+  localitySelect.innerHTML = localities.map(l=>`<option>${l}</option>`).join('');
 }
 
-/* -------------------- Active badges -------------------- */
 function activeFilterBadges(filters){
   const wrap = document.querySelector('#activeFilters');
-  if(!wrap) return;
+  if (!wrap) return;
   const parts = [];
   Object.entries(filters).forEach(([k,v])=>{
-    if(v && (Array.isArray(v) ? v.length : String(v).trim()!=='')){
+    if(v && (Array.isArray(v) ? v.length : String(v).trim()!==''))
       parts.push(`<span class="tag">${k}: ${Array.isArray(v)? v.join(', '): v}</span>`);
-    }
   });
   wrap.innerHTML = parts.join(' ');
 }
 
-/* -------------------- Main apply() -------------------- */
 function apply(){
   const q = (document.querySelector('#q')?.value || "").trim();
 
+  // 🔹 NEW: read active pill
   const activePill = document.querySelector('.filter-pill.active');
   const mode = activePill ? (activePill.dataset.type || '').toLowerCase() : '';
-
   const cityEl = document.querySelector('#city');
-  const citySel = cityEl && cityEl.value ? [cityEl.value] : [];
+  const citySel = cityEl 
+    ? Array.from(cityEl.selectedOptions).map(o=>o.value) 
+    : [];
 
-  const localitySel = document.querySelector('#locality') && document.querySelector('#locality').value ? [document.querySelector('#locality').value] : [];
+  // 🔹 3. CHANGED — Added locality filter usage
+  const localitySel = document.querySelector('#locality') 
+    ? Array.from(document.querySelector('#locality').selectedOptions).map(o=>o.value)
+    : [];
 
-  const minP = Number(document.querySelector('#minPrice')?.value || 0);
-  const maxP = Number(document.querySelector('#maxPrice')?.value || 0);
-  const ptype = document.querySelector('#ptype')?.value;
-  const bhk = document.querySelector('#bhk')?.value;
-  const furnished = document.querySelector('#furnished')?.value;
-  const facing = document.querySelector('#facing')?.value;
-  const minA = Number(document.querySelector('#minArea')?.value || 0);
-  const maxA = Number(document.querySelector('#maxArea')?.value || 0);
+  const minP = parseInt(document.querySelector('#minPrice')?.value||0);
+  const maxP = parseInt(document.querySelector('#maxPrice')?.value||0);
+  const ptype = document.querySelector('#ptype')?.value || '';
+  const bhk = document.querySelector('#bhk')?.value || '';
+  const furnished = document.querySelector('#furnished')?.value || '';
+  const facing = document.querySelector('#facing')?.value || '';
+  const minA = parseInt(document.querySelector('#minArea')?.value||0);
+  const maxA = parseInt(document.querySelector('#maxArea')?.value||0);
   const amenity = (document.querySelector('#amenity')?.value || "").trim();
   const sort = document.querySelector('#sort')?.value || 'relevance';
 
   activeFilterBadges({
-    q, city: citySel, locality: localitySel,
-    price:`${minP||''}-${maxP||''}`, type: ptype, bhk, furnished, facing, area:`${minA||''}-${maxA||''}`, amenity
+    q, 
+    city: citySel, 
+    locality: localitySel, // 🔹 4. NEW — Show locality in badges
+    price:`${minP||''}-${maxP||''}`, 
+    type: ptype, 
+    bhk, 
+    furnished, 
+    facing, 
+    area:`${minA||''}-${maxA||''}`, 
+    amenity
   });
 
-  const filtered = ALL.filter(p=>{
+  let filtered = ALL.filter(p=>{
+    // 🔹 NEW: property category filter (expects p.propertyCategory like "Buy"|"Rent"|"Commercial")
     if (mode) {
       const pc = String(p.propertyCategory || p.category || '').toLowerCase();
       if (pc !== mode) return false;
     }
 
     if(q){
-      const hay = ( (p.title||'') + ' ' + (p.project||'') + ' ' + (p.city||'') + ' ' + (p.locality||'') + ' ' + (p.address||'') + ' ' + (p.summary||'') ).toLowerCase();
-      const pass = q.toLowerCase().split(/\s+/).every(tok=>hay.includes(tok));
+      const t = (p.title+' '+p.project+' '+p.city+' '+p.locality+' '+p.address).toLowerCase();
+      const pass = q.toLowerCase().split(/\s+/).every(tok=>t.includes(tok));
       if(!pass) return false;
     }
     if(citySel.length && !citySel.includes(p.city)) return false;
+
+    // 🔹 5. NEW — Locality filter condition
     if(localitySel.length && !localitySel.includes(p.locality)) return false;
+
     if(minP && (p.priceINR||0) < minP) return false;
     if(maxP && (p.priceINR||0) > maxP) return false;
     if(ptype && p.type !== ptype) return false;
@@ -104,7 +130,6 @@ function apply(){
     return true;
   }).map(p=>({ p, s: App.score(p, q, amenity) }));
 
-  // Sorting
   if(sort==='relevance'){ filtered.sort((a,b)=> b.s - a.s); }
   if(sort==='newest'){ filtered.sort((a,b)=> new Date(b.p.postedAt) - new Date(a.p.postedAt)); }
   if(sort==='priceLow'){ filtered.sort((a,b)=> (a.p.priceINR||0) - (b.p.priceINR||0)); }
@@ -134,231 +159,164 @@ function apply(){
   }
 }
 
-/* expose goto to global for inline onclicks */
-window.goto = function(n){ PAGE = n; apply(); };
+function goto(n){ PAGE = n; apply(); }
 
-/* -------------------- Initialization -------------------- */
 async function init() {
-  // 1) Try buyer form sessionStorage (if buyer form wrote matches)
+  // 1️⃣ Try sessionStorage first (from buyer form)
   try {
     const stored = sessionStorage.getItem('tharaga_matches_v1');
     if (stored) {
       const parsed = JSON.parse(stored);
       if (Array.isArray(parsed.results) && parsed.results.length) {
         console.log("Loaded matches from buyer form:", parsed.results.length);
-        ALL = parsed.results.map(r => App.normalizeRow(r));
+        ALL = parsed.results.map(r => (App.normalizeRow ? App.normalizeRow(r) : {
+          ...r,
+          title: r.title || r.project || "Property",
+          city: r.city || "",
+          locality: r.locality || "",
+          priceINR: r.price_inr || r.priceINR || 0,
+          bhk: r.bhk || r.bedrooms || "",
+          type: r.property_type || r.type || "",
+          carpetAreaSqft: r.area_sqft || r.carpetAreaSqft || 0,
+          furnished: r.furnished || "",
+          facing: r.facing || ""
+        }));
       }
     }
   } catch(e) {
     console.error("Error parsing buyer matches:", e);
   }
 
-  // 2) try URL param matchId (AI matches)
+  //  Try URL param matchId (AI matches)
   if (!ALL.length) {
     const params = new URLSearchParams(location.search);
     const matchId = params.get("matchId");
+
     if (matchId) {
-      const row = await App.fetchMatchesById(matchId);
+      const row = await fetchMatchesById(matchId);
       if (row && Array.isArray(row.results)) {
         console.log("Loaded matches via ID:", matchId, row.results.length);
-        ALL = row.results.map(r => App.normalizeRow(r));
+        ALL = row.results.map(normalizeProperty);
       }
     }
   }
 
-  // 3) fallback to Supabase / sheet / local
+  // 2️⃣ Fallback: load from sheet if nothing from buyer form
   if (!ALL.length) {
     try {
-      const props = await App.fetchProperties();
-      if (props && props.length) {
-        ALL = props;
-        console.log("Loaded properties from Supabase / fallback:", ALL.length);
-      } else {
-        const maybe = await App.fetchSheetOrLocal();
-        ALL = (maybe && maybe.properties) ? maybe.properties : [];
-        console.log("Loaded properties from sheet/local:", ALL.length);
-      }
+      const data = await App.fetchSheetOrLocal();
+      ALL = (data.properties || []).filter(p => p && p.title && p.title.trim() !== "");
     } catch (e) {
-      console.error("Error loading properties:", e);
-      const maybe = await App.fetchSheetOrLocal();
-      ALL = (maybe && maybe.properties) ? maybe.properties : [];
+      console.error("Error loading sheet/local fallback:", e);
+      ALL = [];
     }
   }
 
-  // Hydrate UI selects (if present)
+  // ✅ Hydrate city/locality dropdowns if present
   if (document.querySelector('#city')) {
     hydrateCityOptions();
-    hydrateLocalityOptions([]);
+    hydrateLocalityOptions([]); // start empty
   } else if (document.querySelector('#locality')) {
-    const localities = Array.from(new Set(ALL.map(p => p.locality).filter(Boolean))).sort();
-    document.querySelector('#locality').innerHTML = `<option value="">All localities</option>` + localities.map(l => `<option value="${l}">${l}</option>`).join('');
+    const localities = Array.from(new Set(
+      ALL.map(p => p.locality).filter(Boolean)
+    )).sort();
+    const locEl = document.querySelector('#locality');
+    if (locEl) locEl.innerHTML =
+      localities.map(l => `<option>${l}</option>`).join('');
   }
 
-  // Prefill from URL query params
-  (function prefill() {
+  // ✅ Pre-fill from URL query (optional)
+  (() => {
     const params = new URLSearchParams(location.search);
     const q = params.get("q") || "";
     const c = params.get("city") || "";
+
     const qBox = document.querySelector("#q");
     if (qBox) qBox.value = q;
+
     const citySel = document.querySelector("#city");
     if (citySel && c) {
-      citySel.value = c;
+      [...citySel.options].forEach(o => {
+        o.selected = (o.value === c);
+      });
       hydrateLocalityOptions([c]);
     }
   })();
 
-  // initialize slider and wire UI after DOM ready
-  initSlider(); // guarded inside
   apply();
   wireUI();
 }
 
-/* -------------------- Slider (guarded) -------------------- */
-function initSlider(){
-  try {
-    const root = document.querySelector('.price-range');
-    if (!root || root.dataset.initialized === '1') return;
-    root.dataset.initialized = '1';
 
-    const RANGE_MIN = Number(root.dataset.min ?? 0);
-    const RANGE_MAX = Number(root.dataset.max ?? 20000000);
-    const STEP      = Number(root.dataset.step ?? 100000);
-    const GAP       = Number(root.dataset.gap ?? 200000);
+// ✅ Pill buttons click
+document.querySelectorAll('.filter-pill').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    PAGE = 1;
+    apply();
+  });
+});
 
-    const minSlider = document.getElementById('priceMinSlider');
-    const maxSlider = document.getElementById('priceMaxSlider');
-    const progress  = root.querySelector('.range-progress');
-
-    const minValueDisplay = document.getElementById('minPriceValue');
-    const maxValueDisplay = document.getElementById('maxPriceValue');
-
-    const minHidden = document.getElementById('minPrice');
-    const maxHidden = document.getElementById('maxPrice');
-
-    if (!minSlider || !maxSlider) return;
-
-    [minSlider, maxSlider].forEach(sl => {
-      sl.min = RANGE_MIN; sl.max = RANGE_MAX; sl.step = STEP;
+// Reset button click
+document.querySelector('#reset')?.addEventListener('click', () => {
+  ['q', 'minPrice', 'maxPrice', 'ptype', 'bhk', 'furnished', 'facing', 'minArea', 'maxArea', 'amenity']
+    .forEach(id => {
+      const el = document.querySelector('#' + id);
+      if (el) el.value = '';
     });
 
-    const startMin = Number(minHidden?.value || RANGE_MIN);
-    const startMax = Number(maxHidden?.value || RANGE_MAX);
-    minSlider.value = Math.max(RANGE_MIN, Math.min(startMin, RANGE_MAX));
-    maxSlider.value = Math.max(RANGE_MIN, Math.min(startMax, RANGE_MAX));
-
-    function formatINRShort(num) {
-      if (num >= 10000000) return `₹${Math.round((num/10000000)*10)/10}Cr`;
-      if (num >= 100000)   return `₹${Math.round(num/100000)}L`;
-      return `₹${num.toLocaleString('en-IN')}`;
-    }
-
-    function clampWithGap(which) {
-      let a = Number(minSlider.value);
-      let b = Number(maxSlider.value);
-      if (b - a < GAP) {
-        if (which === 'min') {
-          a = Math.min(a, RANGE_MAX - GAP);
-          b = a + GAP;
-          maxSlider.value = b;
-        } else {
-          b = Math.max(b, RANGE_MIN + GAP);
-          a = b - GAP;
-          minSlider.value = a;
-        }
-      }
-    }
-
-    function updateUI() {
-      const a = Number(minSlider.value);
-      const b = Number(maxSlider.value);
-      const leftPct  = ((a - RANGE_MIN) / (RANGE_MAX - RANGE_MIN)) * 100;
-      const rightPct = 100 - ((b - RANGE_MIN) / (RANGE_MAX - RANGE_MIN)) * 100;
-      if (progress) { progress.style.left  = `${leftPct}%`; progress.style.right = `${rightPct}%`; }
-      if (minValueDisplay) minValueDisplay.textContent = formatINRShort(a);
-      if (maxValueDisplay) maxValueDisplay.textContent = formatINRShort(b);
-      if (minHidden) minHidden.value = a;
-      if (maxHidden) maxHidden.value = b;
-      // emit input/change so apply() reacts
-      minHidden?.dispatchEvent(new Event('input', {bubbles:true}));
-      maxHidden?.dispatchEvent(new Event('input', {bubbles:true}));
-    }
-
-    function onMinSlide() { clampWithGap('min'); updateUI(); }
-    function onMaxSlide() { clampWithGap('max'); updateUI(); }
-
-    minSlider.addEventListener('input', onMinSlide);
-    maxSlider.addEventListener('input', onMaxSlide);
-    clampWithGap('max');
-    updateUI();
-  } catch (err) {
-    console.error("Slider init error:", err);
+  if (document.querySelector('#city')) {
+    Array.from(document.querySelector('#city').options).forEach(o => o.selected = false);
   }
-}
+  if (document.querySelector('#locality')) {
+    Array.from(document.querySelector('#locality').options).forEach(o => o.selected = false);
+  }
+  PAGE = 1;
+  apply();
+});
 
-/* -------------------- UI wiring -------------------- */
-function wireUI(){
-  document.querySelectorAll('.filter-pill').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      PAGE = 1; apply();
-    });
-  });
+// Live search as user types
+document.querySelector('#q')?.addEventListener('input', () => {
+  PAGE = 1;
+  apply();
+});
 
-  document.querySelector('#reset')?.addEventListener('click', () => {
-    ['q','minPrice','maxPrice','ptype','bhk','furnished','facing','minArea','maxArea','amenity']
-      .forEach(id => { const el = document.querySelector('#' + id); if (el) el.value = ''; });
-    const cityEl = document.querySelector('#city'); if (cityEl) cityEl.value = '';
-    const localityEl = document.querySelector('#locality'); if (localityEl) localityEl.value = '';
-    PAGE = 1; apply();
-  });
+init();
 
-  document.querySelector('#apply')?.addEventListener('click', () => { PAGE = 1; apply(); });
-  document.querySelector('#q')?.addEventListener('input', () => { PAGE = 1; apply(); });
-
-  ['#sort','#ptype','#bhk','#furnished','#facing','#locality','#city','#minArea','#maxArea','#amenity']
-    .forEach(sel => { const el = document.querySelector(sel); if (el) el.addEventListener('change', () => { PAGE = 1; apply(); }); });
-}
-
-/* -------------------- Map focus helper -------------------- */
+// ✅ Function to focus on a property (lat/lng OR address → map)
 async function focusOnMap(lat, lng, title, address) {
+  // Case 1: Use lat/lng if available
   if (lat && lng && window.map) {
     window.map.setView([lat, lng], 16);
-    L.popup().setLatLng([lat, lng]).setContent(`<b>${title}</b><br>${address || ''}`).openOn(window.map);
+    L.popup()
+      .setLatLng([lat, lng])
+      .setContent(`<b>${title}</b><br>${address || ''}`)
+      .openOn(window.map);
     return;
   }
+
+  // Case 2: Geocode address if no lat/lng
   if (address && window.map) {
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`);
       const data = await res.json();
+
       if (data && data.length > 0) {
         const { lat, lon } = data[0];
         window.map.setView([lat, lon], 16);
-        L.popup().setLatLng([lat, lon]).setContent(`<b>${title}</b><br>${address}`).openOn(window.map);
+        L.popup()
+          .setLatLng([lat, lon])
+          .setContent(`<b>${title}</b><br>${address}`)
+          .openOn(window.map);
       } else {
-        // no results
+        alert("Couldn't find this address on the map.");
       }
     } catch (err) {
       console.error(err);
+      alert("Error finding location.");
     }
+  } else {
+    alert("No location info available.");
   }
 }
-
-/* -------------------- Card click map centering -------------------- */
-document.addEventListener('click', (ev) => {
-  const card = ev.target.closest('.card');
-  if (!card) return;
-  const id = card.dataset.id;
-  if (id) {
-    const p = ALL.find(x => String(x.id) === String(id));
-    if (p) {
-      focusOnMap(p.lat, p.lng, p.title, p.address);
-    }
-  }
-});
-
-/* -------------------- Boot -------------------- */
-document.addEventListener('DOMContentLoaded', () => {
-  init().catch(e => console.error("Init error:", e));
-});

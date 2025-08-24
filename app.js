@@ -247,6 +247,13 @@ export function cardHTML(p, s) {
   </article>`;
 }
 
+function renderListings(listings = [], containerSelector = "#results") {
+  const container = document.querySelector(containerSelector);
+  if (!container) {
+    console.warn("renderListings: container not found:", containerSelector);
+    return;
+  }
+  // Build HTML
 /* --------------------------- Exports ----------------------------- */
 export default {
   fetchProperties,
@@ -257,3 +264,10 @@ export default {
   currency,
   normalizeRow,
 };
+/* Init on DOM ready */
+if (typeof document !== "undefined") {
+  document.addEventListener("DOMContentLoaded", () => {
+    // safe init
+    initAndRender().catch(err => console.error("init error:", err));
+  });
+}

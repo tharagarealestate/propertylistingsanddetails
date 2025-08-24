@@ -8,7 +8,8 @@ const CFG = (typeof window !== "undefined" && window.CONFIG) || {};
 const isValid = v => typeof v === "string" && v.trim() && !/YOUR_ANON_KEY|YOUR_PROJECT_ID/i.test(v);
 
 export const SUPABASE_URL = isValid(CFG.SUPABASE_URL) ? CFG.SUPABASE_URL : "https://wedevtjjmdvngyshqdro.supabase.co";
-export const SUPABASE_ANON_KEY = isValid(CFG.SUPABASE_ANON_KEY) ? CFG.SUPABASE_ANON_KEY : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndlZGV2dGpqbWR2bmd5c2hxZHJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NzYwMzgsImV4cCI6MjA3MTA1MjAzOH0.Ex2c_sx358dFdygUGMVBohyTVto6fdEQ5nydDRh9m6M";
+export const SUPABASE_ANON_KEY = isValid(CFG.SUPABASE_ANON_KEY) ? CFG.SUPABASE_ANON_KEY : (CFG.SUPABASE_ANON_KEY || "");
+export const SHEET_CSV_URL = CFG.SHEET_CSV_URL || null;
 
 if (!SUPABASE_ANON_KEY) {
   console.warn("Supabase anon key missing or placeholder. Set window.CONFIG.SUPABASE_ANON_KEY in config.js");
@@ -93,17 +94,22 @@ export function normalizeRow(row = {}) {
 
 /* -------------------------- Fetchers ---------------------------- */
 async function fetchFromSupabase({ limit = 1000 } = {}) {
-  const { data, error } = await supabase
-    .from("properties")
-    .select("*")
-    .limit(limit);
+  try {
+    const { data, error } = await supabase
+      .from("properties")
+      .select("*")
+      .limit(limit);
 
-  if (error) {
-    console.warn("Supabase fetch error:", error);
-    throw error;
+    if (error) {
+      console.warn("Supabase fetch error:", error);
+      return []; // do not throw — allow fallbacks
+    }
+    if (!Array.isArray(data)) return [];
+    return data.map(normalizeRow);
+  } catch (err) {
+    console.warn("Supabase fetch exception:", err);
+    return [];
   }
-  if (!Array.isArray(data)) return [];
-  return data.map(normalizeRow);
 }
 
 async function fetchFromSheetCSV() {
@@ -140,7 +146,6 @@ async function fetchFromLocalJSON() {
   }
 }
 
-/** wrapper used by listings when no DB available — returns object with properties[] */
 export async function fetchSheetOrLocal() {
   const sheet = await fetchFromSheetCSV();
   if (sheet && sheet.length) return { properties: sheet };
@@ -148,16 +153,11 @@ export async function fetchSheetOrLocal() {
   return { properties: local };
 }
 
-/** Try to fetch matches by id from /api endpoints OR from a possible ai_matches table */
 export async function fetchMatchesById(matchId) {
   if (!matchId) return null;
   try {
-    // try api endpoint first (you can implement this server-side)
     const r1 = await fetch(`/api/matches/${encodeURIComponent(matchId)}`);
-    if (r1.ok) {
-      const j = await r1.json();
-      return j;
-    }
+    if (r1.ok) return await r1.json();
   } catch (e) { /* ignore */ }
 
   try {
@@ -165,7 +165,6 @@ export async function fetchMatchesById(matchId) {
     if (r2.ok) return await r2.json();
   } catch (e) { /* ignore */ }
 
-  // fallback: read from a hypothetical 'ai_matches' table in Supabase
   try {
     const { data, error } = await supabase.from("ai_matches").select("results").eq("id", matchId).limit(1);
     if (error) { console.warn("ai_matches table lookup error:", error); return null; }
@@ -176,23 +175,16 @@ export async function fetchMatchesById(matchId) {
   return null;
 }
 
-/** Primary exported fetch for the app */
 export async function fetchProperties() {
-  try {
-    const supa = await fetchFromSupabase();
-    if (supa && supa.length) return supa;
-  } catch (e) {
-    // continue to fallback
-  }
-
+  // try supabase -> sheet -> local
+  const supa = await fetchFromSupabase();
+  if (supa && supa.length) return supa;
   const sheet = await fetchFromSheetCSV();
   if (sheet && sheet.length) return sheet;
-
   return await fetchFromLocalJSON();
 }
 
 /* --------------------------- Scoring ----------------------------- */
-/** lightweight text overlap + recency + pricePSQ scoring (client preview) */
 export function score(p, q = "", amenity = "") {
   let s = 0;
   const text = ((p.title || "") + " " + (p.project || "") + " " + (p.city || "") + " " + (p.locality || "")).toLowerCase();
@@ -255,187 +247,13 @@ export function cardHTML(p, s) {
   </article>`;
 }
 
-/** Render listing array into given container selector */
-function renderListings(listings = [], containerSelector = "#results") {
-  const container = document.querySelector(containerSelector);
-  if (!container) {
-    console.warn("renderListings: container not found:", containerSelector);
-    return;
-  }
-  // Build HTML
-  const html = listings.map(p => {
-    const s = score(p, (document.getElementById('q')?.value || ""), "");
-    return cardHTML(p, s);
-  }).join("\n");
-  container.innerHTML = html || `<div class="empty">No properties found</div>`;
-}
-// === PRICE RANGE SLIDER HANDLER ===
-// === PRICE RANGE SLIDER – full functionality ===
-document.addEventListener('DOMContentLoaded', () => {
-  const root = document.querySelector('.price-range');
-  if (!root || root.dataset.initialized === '1') return;
-  root.dataset.initialized = '1';
-
-  const RANGE_MIN = Number(root.dataset.min ?? 0);
-  const RANGE_MAX = Number(root.dataset.max ?? 20000000);
-  const STEP      = Number(root.dataset.step ?? 100000);
-  const GAP       = Number(root.dataset.gap ?? 200000);
-
-  const minSlider = document.getElementById('priceMinSlider');
-  const maxSlider = document.getElementById('priceMaxSlider');
-  const progress  = root.querySelector('.range-progress');
-
-  const minValueDisplay = document.getElementById('minPriceValue');
-  const maxValueDisplay = document.getElementById('maxPriceValue');
-
-  const minHidden = document.getElementById('minPrice');
-  const maxHidden = document.getElementById('maxPrice');
-
-  [minSlider, maxSlider].forEach(sl => {
-    sl.min = RANGE_MIN;
-    sl.max = RANGE_MAX;
-    sl.step = STEP;
-  });
-
-  const startMin = Number(minHidden?.value || RANGE_MIN);
-  const startMax = Number(maxHidden?.value || RANGE_MAX);
-  minSlider.value = Math.max(RANGE_MIN, Math.min(startMin, RANGE_MAX));
-  maxSlider.value = Math.max(RANGE_MIN, Math.min(startMax, RANGE_MAX));
-
-  function formatINRShort(num) {
-    if (num >= 10000000) return `₹${Math.round((num/10000000)*10)/10}Cr`;
-    if (num >= 100000)   return `₹${Math.round(num/100000)}L`;
-    return `₹${num.toLocaleString('en-IN')}`;
-  }
-
-  function clampWithGap(which) {
-    let a = Number(minSlider.value);
-    let b = Number(maxSlider.value);
-    if (b - a < GAP) {
-      if (which === 'min') {
-        a = Math.min(a, RANGE_MAX - GAP);
-        b = a + GAP;
-        maxSlider.value = b;
-      } else {
-        b = Math.max(b, RANGE_MIN + GAP);
-        a = b - GAP;
-        minSlider.value = a;
-      }
-    }
-  }
-
-  function updateUI() {
-    const a = Number(minSlider.value);
-    const b = Number(maxSlider.value);
-
-    const leftPct  = ((a - RANGE_MIN) / (RANGE_MAX - RANGE_MIN)) * 100;
-    const rightPct = 100 - ((b - RANGE_MIN) / (RANGE_MAX - RANGE_MIN)) * 100;
-    if (progress) {
-      progress.style.left  = `${leftPct}%`;
-      progress.style.right = `${rightPct}%`;
-    }
-
-    if (minValueDisplay) minValueDisplay.textContent = formatINRShort(a);
-    if (maxValueDisplay) maxValueDisplay.textContent = formatINRShort(b);
-
-    if (minHidden) minHidden.value = a;
-    if (maxHidden) maxHidden.value = b;
-
-    // notify filters listening on input/change
-    minHidden?.dispatchEvent(new Event('input',  { bubbles: true }));
-    maxHidden?.dispatchEvent(new Event('input',  { bubbles: true }));
-    minHidden?.dispatchEvent(new Event('change', { bubbles: true }));
-    maxHidden?.dispatchEvent(new Event('change', { bubbles: true }));
-  }
-
-  function onMinSlide() { clampWithGap('min'); updateUI(); }
-  function onMaxSlide() { clampWithGap('max'); updateUI(); }
-
-  minSlider.addEventListener('input', onMinSlide);
-  maxSlider.addEventListener('input', onMaxSlide);
-
-  clampWithGap('max');
-  updateUI();
-});
-
-/* -------------------------- Filtering logic ------------------------ */
-/**
- * Apply filters based on UI controls:
- * - price range (hidden inputs with ids: minPrice, maxPrice)
- * - search text (input#searchInput)
- * - city/locality filters (optional)
- */
-function applyFiltersAndRender() {
-  const minHidden = document.getElementById("minPrice");
-  const maxHidden = document.getElementById("maxPrice");
-  const searchInput = document.getElementById('q');
-  const min = toNumber(minHidden?.value) ?? 0;
-  const max = toNumber(maxHidden?.value) ?? Number.POSITIVE_INFINITY;
-  const q = (searchInput?.value || "").trim().toLowerCase();
-
-  const filtered = PROPERTIES_CACHE.filter(p => {
-    const price = p.priceINR ?? 0;
-    if (price < min || price > max) return false;
-    if (q) {
-      const hay = (p.title + " " + p.project + " " + p.locality + " " + p.city + " " + (p.summary || "")).toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    return true;
-  });
-
-  // sort by score descending
-  filtered.sort((a, b) => score(b, q) - score(a, q));
-
-  renderListings(filtered);
-}
-
-/* Debounce helper */
-function debounce(fn, wait = 200) {
-  let t;
-  return (...args) => {
-    clearTimeout(t);
-    t = setTimeout(() => fn(...args), wait);
-  };
-}
-
-/* -------------------------- Bootstrapping -------------------------- */
-async function initAndRender() {
-  try {
-  const test = await supabase.from("properties").select("id, title").limit(1);
-  console.log("TEST select:", test);
-} catch (e) {
-  console.error("TEST select error:", e);
-}
-  try {
-    // Load data once and cache
-    PROPERTIES_CACHE = await fetchProperties();
-  } catch (e) {
-    console.error("Failed to load properties:", e);
-    PROPERTIES_CACHE = [];
-  }
-
-  // initial render
-  applyFiltersAndRender();
-
-  // Hook UI events for live updates:
-  const minHidden = document.getElementById("minPrice");
-  const maxHidden = document.getElementById("maxPrice");
-  const searchInput = document.getElementById("q");
-
-  // The price slider logic dispatches 'input' events on minHidden/maxHidden already.
-  if (minHidden) minHidden.addEventListener("input", debounce(applyFiltersAndRender, 50));
-  if (maxHidden) maxHidden.addEventListener("input", debounce(applyFiltersAndRender, 50));
-  if (searchInput) searchInput.addEventListener("input", debounce(applyFiltersAndRender, 200));
-}
-
-/* Init on DOM ready */
-if (typeof document !== "undefined") {
-  document.addEventListener("DOMContentLoaded", () => {
-    // safe init
-    initAndRender().catch(err => console.error("init error:", err));
-  });
-}
-
-/* -------------------------- Exports ------------------------------- */
-export { fetchProperties, score, cardHTML, currency, normalizeRow };
-
+/* --------------------------- Exports ----------------------------- */
+export default {
+  fetchProperties,
+  fetchSheetOrLocal,
+  fetchMatchesById,
+  score,
+  cardHTML,
+  currency,
+  normalizeRow,
+};

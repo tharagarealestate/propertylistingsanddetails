@@ -1,5 +1,5 @@
 // listings.js — UI controller (ES module)
-// This imports the data/util module (app.js) and runs the UI init.
+// Imports the data/util module (app.js) and runs the UI init.
 
 import * as App from './app.js?v=20250823';
 
@@ -7,11 +7,7 @@ const PAGE_SIZE = 9;
 let ALL = [];
 let PAGE = 1;
 
-function el(html){ 
-  const t = document.createElement('template'); 
-  t.innerHTML = html.trim(); 
-  return t.content.firstChild; 
-}
+function el(html){ const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstChild; }
 
 /* -------------------- City / Locality helpers -------------------- */
 function hydrateCityOptions(){
@@ -22,8 +18,7 @@ function hydrateCityOptions(){
   sel.addEventListener('change', ()=> {
     const selectedCities = sel.value ? [sel.value] : [];
     hydrateLocalityOptions(selectedCities);
-    PAGE = 1;
-    apply();
+    PAGE = 1; apply();
   });
 }
 
@@ -31,7 +26,6 @@ function hydrateLocalityOptions(selectedCities){
   const localitySelect = document.querySelector('#locality');
   if(!localitySelect) return;
   if(!selectedCities || selectedCities.length === 0) {
-    // Show all localities
     const localities = Array.from(new Set(ALL.map(p=>p.locality).filter(Boolean))).sort();
     localitySelect.innerHTML = `<option value="">All localities</option>` + localities.map(l=>`<option value="${l}">${l}</option>`).join('');
     return;
@@ -81,16 +75,8 @@ function apply(){
   const sort = document.querySelector('#sort')?.value || 'relevance';
 
   activeFilterBadges({
-    q, 
-    city: citySel, 
-    locality: localitySel,
-    price:`${minP||''}-${maxP||''}`, 
-    type: ptype, 
-    bhk, 
-    furnished, 
-    facing, 
-    area:`${minA||''}-${maxA||''}`, 
-    amenity
+    q, city: citySel, locality: localitySel,
+    price:`${minP||''}-${maxP||''}`, type: ptype, bhk, furnished, facing, area:`${minA||''}-${maxA||''}`, amenity
   });
 
   const filtered = ALL.filter(p=>{
@@ -180,16 +166,14 @@ async function init() {
     }
   }
 
-  // 3) fallback to sheet/local or Supabase via app module
+  // 3) fallback to Supabase / sheet / local
   if (!ALL.length) {
     try {
-      // Prefer Supabase properties (fast and canonical)
       const props = await App.fetchProperties();
       if (props && props.length) {
         ALL = props;
-        console.log("Loaded properties from Supabase:", ALL.length);
+        console.log("Loaded properties from Supabase / fallback:", ALL.length);
       } else {
-        // fallback to sheet/local (object with properties)
         const maybe = await App.fetchSheetOrLocal();
         ALL = (maybe && maybe.properties) ? maybe.properties : [];
         console.log("Loaded properties from sheet/local:", ALL.length);
@@ -210,7 +194,7 @@ async function init() {
     document.querySelector('#locality').innerHTML = `<option value="">All localities</option>` + localities.map(l => `<option value="${l}">${l}</option>`).join('');
   }
 
-  // Pre-fill from URL query params
+  // Prefill from URL query params
   (function prefill() {
     const params = new URLSearchParams(location.search);
     const q = params.get("q") || "";
@@ -224,59 +208,124 @@ async function init() {
     }
   })();
 
+  // initialize slider and wire UI after DOM ready
+  initSlider(); // guarded inside
   apply();
   wireUI();
 }
 
+/* -------------------- Slider (guarded) -------------------- */
+function initSlider(){
+  try {
+    const root = document.querySelector('.price-range');
+    if (!root || root.dataset.initialized === '1') return;
+    root.dataset.initialized = '1';
+
+    const RANGE_MIN = Number(root.dataset.min ?? 0);
+    const RANGE_MAX = Number(root.dataset.max ?? 20000000);
+    const STEP      = Number(root.dataset.step ?? 100000);
+    const GAP       = Number(root.dataset.gap ?? 200000);
+
+    const minSlider = document.getElementById('priceMinSlider');
+    const maxSlider = document.getElementById('priceMaxSlider');
+    const progress  = root.querySelector('.range-progress');
+
+    const minValueDisplay = document.getElementById('minPriceValue');
+    const maxValueDisplay = document.getElementById('maxPriceValue');
+
+    const minHidden = document.getElementById('minPrice');
+    const maxHidden = document.getElementById('maxPrice');
+
+    if (!minSlider || !maxSlider) return;
+
+    [minSlider, maxSlider].forEach(sl => {
+      sl.min = RANGE_MIN; sl.max = RANGE_MAX; sl.step = STEP;
+    });
+
+    const startMin = Number(minHidden?.value || RANGE_MIN);
+    const startMax = Number(maxHidden?.value || RANGE_MAX);
+    minSlider.value = Math.max(RANGE_MIN, Math.min(startMin, RANGE_MAX));
+    maxSlider.value = Math.max(RANGE_MIN, Math.min(startMax, RANGE_MAX));
+
+    function formatINRShort(num) {
+      if (num >= 10000000) return `₹${Math.round((num/10000000)*10)/10}Cr`;
+      if (num >= 100000)   return `₹${Math.round(num/100000)}L`;
+      return `₹${num.toLocaleString('en-IN')}`;
+    }
+
+    function clampWithGap(which) {
+      let a = Number(minSlider.value);
+      let b = Number(maxSlider.value);
+      if (b - a < GAP) {
+        if (which === 'min') {
+          a = Math.min(a, RANGE_MAX - GAP);
+          b = a + GAP;
+          maxSlider.value = b;
+        } else {
+          b = Math.max(b, RANGE_MIN + GAP);
+          a = b - GAP;
+          minSlider.value = a;
+        }
+      }
+    }
+
+    function updateUI() {
+      const a = Number(minSlider.value);
+      const b = Number(maxSlider.value);
+      const leftPct  = ((a - RANGE_MIN) / (RANGE_MAX - RANGE_MIN)) * 100;
+      const rightPct = 100 - ((b - RANGE_MIN) / (RANGE_MAX - RANGE_MIN)) * 100;
+      if (progress) { progress.style.left  = `${leftPct}%`; progress.style.right = `${rightPct}%`; }
+      if (minValueDisplay) minValueDisplay.textContent = formatINRShort(a);
+      if (maxValueDisplay) maxValueDisplay.textContent = formatINRShort(b);
+      if (minHidden) minHidden.value = a;
+      if (maxHidden) maxHidden.value = b;
+      // emit input/change so apply() reacts
+      minHidden?.dispatchEvent(new Event('input', {bubbles:true}));
+      maxHidden?.dispatchEvent(new Event('input', {bubbles:true}));
+    }
+
+    function onMinSlide() { clampWithGap('min'); updateUI(); }
+    function onMaxSlide() { clampWithGap('max'); updateUI(); }
+
+    minSlider.addEventListener('input', onMinSlide);
+    maxSlider.addEventListener('input', onMaxSlide);
+    clampWithGap('max');
+    updateUI();
+  } catch (err) {
+    console.error("Slider init error:", err);
+  }
+}
+
 /* -------------------- UI wiring -------------------- */
 function wireUI(){
-  // Pill clicks already set in index.html area — ensure they refresh filters
   document.querySelectorAll('.filter-pill').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      PAGE = 1;
-      apply();
+      PAGE = 1; apply();
     });
   });
 
-  // Reset
   document.querySelector('#reset')?.addEventListener('click', () => {
     ['q','minPrice','maxPrice','ptype','bhk','furnished','facing','minArea','maxArea','amenity']
-      .forEach(id => {
-        const el = document.querySelector('#' + id);
-        if (el) el.value = '';
-      });
-    const cityEl = document.querySelector('#city');
-    if (cityEl) cityEl.value = '';
-    const localityEl = document.querySelector('#locality');
-    if (localityEl) localityEl.value = '';
-    PAGE = 1;
-    apply();
+      .forEach(id => { const el = document.querySelector('#' + id); if (el) el.value = ''; });
+    const cityEl = document.querySelector('#city'); if (cityEl) cityEl.value = '';
+    const localityEl = document.querySelector('#locality'); if (localityEl) localityEl.value = '';
+    PAGE = 1; apply();
   });
 
-  // Apply button (if present)
   document.querySelector('#apply')?.addEventListener('click', () => { PAGE = 1; apply(); });
-
-  // Live search
   document.querySelector('#q')?.addEventListener('input', () => { PAGE = 1; apply(); });
 
-  // Sort + selects
   ['#sort','#ptype','#bhk','#furnished','#facing','#locality','#city','#minArea','#maxArea','#amenity']
-    .forEach(sel => {
-      const el = document.querySelector(sel);
-      if (el) el.addEventListener('change', () => { PAGE = 1; apply(); });
-    });
+    .forEach(sel => { const el = document.querySelector(sel); if (el) el.addEventListener('change', () => { PAGE = 1; apply(); }); });
 }
 
-/* -------------------- Map focus helper (keeps your original) -------------------- */
+/* -------------------- Map focus helper -------------------- */
 async function focusOnMap(lat, lng, title, address) {
   if (lat && lng && window.map) {
     window.map.setView([lat, lng], 16);
-    L.popup()
-      .setLatLng([lat, lng])
-      .setContent(`<b>${title}</b><br>${address || ''}`)
-      .openOn(window.map);
+    L.popup().setLatLng([lat, lng]).setContent(`<b>${title}</b><br>${address || ''}`).openOn(window.map);
     return;
   }
   if (address && window.map) {
@@ -286,28 +335,20 @@ async function focusOnMap(lat, lng, title, address) {
       if (data && data.length > 0) {
         const { lat, lon } = data[0];
         window.map.setView([lat, lon], 16);
-        L.popup()
-          .setLatLng([lat, lon])
-          .setContent(`<b>${title}</b><br>${address}`)
-          .openOn(window.map);
+        L.popup().setLatLng([lat, lon]).setContent(`<b>${title}</b><br>${address}`).openOn(window.map);
       } else {
-        alert("Couldn't find this address on the map.");
+        // no results
       }
     } catch (err) {
       console.error(err);
-      alert("Error finding location.");
     }
-  } else {
-    alert("No location info available.");
   }
 }
 
-/* -------------------- Small global hooks -------------------- */
-// allow clicking a card to center map when card has data-id and an element with lat/lng in dataset
+/* -------------------- Card click map centering -------------------- */
 document.addEventListener('click', (ev) => {
   const card = ev.target.closest('.card');
   if (!card) return;
-  // if you want to store lat/lng on card use data attributes; fallback to property lookup
   const id = card.dataset.id;
   if (id) {
     const p = ALL.find(x => String(x.id) === String(id));

@@ -254,6 +254,81 @@ function renderListings(listings = [], containerSelector = "#results") {
     return;
   }
   // Build HTML
+  const html = listings.map(p => {
+    const s = score(p, (document.getElementById('q')?.value || ""), "");
+        return cardHTML(p, s);
+  }).join("\n");
+  container.innerHTML = html || `<div class="empty">No properties found</div>`;
+}
+/* -------------------------- Filtering logic ------------------------ */
+/**
+ * Apply filters based on UI controls:
+ * - price range (hidden inputs with ids: minPrice, maxPrice)
+ * - search text (input#searchInput)
+ * - city/locality filters (optional)
+ */
+function applyFiltersAndRender() {
+  const minHidden = document.getElementById("minPrice");
+  const maxHidden = document.getElementById("maxPrice");
+  const searchInput = document.getElementById('q');
+  const min = toNumber(minHidden?.value) ?? 0;
+  const max = toNumber(maxHidden?.value) ?? Number.POSITIVE_INFINITY;
+  const q = (searchInput?.value || "").trim().toLowerCase();
+
+  const filtered = PROPERTIES_CACHE.filter(p => {
+    const price = p.priceINR ?? 0;
+    if (price < min || price > max) return false;
+    if (q) {
+      const hay = (p.title + " " + p.project + " " + p.locality + " " + p.city + " " + (p.summary || "")).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  // sort by score descending
+  filtered.sort((a, b) => score(b, q) - score(a, q));
+
+  renderListings(filtered);
+}
+
+/* Debounce helper */
+function debounce(fn, wait = 200) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), wait);
+  };
+}
+
+/* -------------------------- Bootstrapping -------------------------- */
+async function initAndRender() {
+  try {
+  const test = await supabase.from("properties").select("id, title").limit(1);
+  console.log("TEST select:", test);
+} catch (e) {
+  console.error("TEST select error:", e);
+}
+  try {
+    // Load data once and cache
+    PROPERTIES_CACHE = await fetchProperties();
+  } catch (e) {
+    console.error("Failed to load properties:", e);
+    PROPERTIES_CACHE = [];
+  }
+
+  // initial render
+  applyFiltersAndRender();
+
+  // Hook UI events for live updates:
+  const minHidden = document.getElementById("minPrice");
+  const maxHidden = document.getElementById("maxPrice");
+  const searchInput = document.getElementById("q");
+
+  // The price slider logic dispatches 'input' events on minHidden/maxHidden already.
+  if (minHidden) minHidden.addEventListener("input", debounce(applyFiltersAndRender, 50));
+  if (maxHidden) maxHidden.addEventListener("input", debounce(applyFiltersAndRender, 50));
+  if (searchInput) searchInput.addEventListener("input", debounce(applyFiltersAndRender, 200));
+}
 /* --------------------------- Exports ----------------------------- */
 export default {
   fetchProperties,
@@ -270,4 +345,5 @@ if (typeof document !== "undefined") {
     // safe init
     initAndRender().catch(err => console.error("init error:", err));
   });
+}
 }

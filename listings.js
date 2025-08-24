@@ -45,7 +45,9 @@ function hydrateLocalityOptions(selectedCities){
        .map(p=>p.locality)
        .filter(Boolean)
   )).sort();
-  localitySelect.innerHTML = localities.map(l=>`<option value="${l}">${l}</option>`).join('');
+  localitySelect.innerHTML =
+  `<option value="All">All</option>` +
+  localities.map(l=>`<option value="${l}">${l}</option>`).join('');
 }
 
 /* ---------- active filter badges ---------- */
@@ -108,7 +110,10 @@ function apply(){
       if(!pass) return false;
     }
     if(citySel.length && !citySel.includes(p.city)) return false;
-    if(localitySel.length && !localitySel.includes(p.locality)) return false;
+    if(localitySel.length &&
+        !(localitySel.includes("All") || localitySel.includes(p.locality))) {
+        return false;
+      }
     if(minP && (p.priceINR||0) < minP) return false;
     if(maxP && (p.priceINR||0) > maxP) return false;
     if(ptype && p.type !== ptype) return false;
@@ -248,7 +253,10 @@ async function init() {
   } else if (document.querySelector('#locality')) {
     const localities = Array.from(new Set(ALL.map(p => p.locality).filter(Boolean))).sort();
     const locEl = document.querySelector('#locality');
-    if (locEl) locEl.innerHTML = localities.map(l => `<option value="${l}">${l}</option>`).join('');
+    if (locEl)
+  locEl.innerHTML =
+    `<option value="All">All</option>` +
+    localities.map(l => `<option value="${l}">${l}</option>`).join('');
   }
 
   // Pre-fill from URL query
@@ -309,8 +317,8 @@ document.querySelector('#reset')?.addEventListener('click', () => {
     Array.from(document.querySelector('#city').options).forEach(o => o.selected = false);
   }
   if (document.querySelector('#locality')) {
-    Array.from(document.querySelector('#locality').options).forEach(o => o.selected = false);
-  }
+  document.querySelector('#locality').value = "All";
+}
   PAGE = 1;
   apply();
 });

@@ -107,7 +107,6 @@ async function fetchFromSupabase({ limit = 1000 } = {}) {
 }
 
 async function fetchFromSheetCSV() {
-  const SHEET_CSV_URL = (typeof window !== "undefined" && window.CONFIG && window.CONFIG.SHEET_CSV_URL) || null;
   if (!SHEET_CSV_URL) return [];
   try {
     const res = await fetch(SHEET_CSV_URL, { cache: "no-store" });

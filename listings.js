@@ -48,6 +48,15 @@ function hydrateLocalityOptions(selectedCities){
   localitySelect.innerHTML =
   `<option value="All">All</option>` +
   localities.map(l=>`<option value="${l}">${l}</option>`).join('');
+  const scope = (!selectedCities || selectedCities.length === 0)
+   ? ALL
+   : ALL.filter(p => selectedCities.includes(p.city));
+ const localities = Array.from(new Set(
+   scope.map(p => p.locality).filter(Boolean)
+ )).sort();
+ localitySelect.innerHTML =
+   `<option value="All" selected>All</option>` +
+   localities.map(l => `<option value="${l}">${l}</option>`).join('');
 }
 
 /* ---------- active filter badges ---------- */
@@ -100,20 +109,20 @@ function apply(){
   });
 
   let filtered = ALL.filter(p=>{
-    if (mode) {
+    if (mode && mode !== 'all') {
       const pc = String(p.propertyCategory || p.category || '').toLowerCase();
       if (pc !== mode) return false;
     }
-    if(q){
+    if (q) {
       const t = (p.title+' '+p.project+' '+p.city+' '+p.locality+' '+(p.address||'')).toLowerCase();
-      const pass = q.toLowerCase().split(/\s+/).every(tok=>t.includes(tok));
-      if(!pass) return false;
+      const toks = q.toLowerCase().trim().split(/\s+/).filter(Boolean);
+      if (toks.length && !toks.every(tok => t.includes(tok))) return false;
     }
     if(citySel.length && !citySel.includes(p.city)) return false;
-    if(localitySel.length &&
-        !(localitySel.includes("All") || localitySel.includes(p.locality))) {
-        return false;
-      }
+    if (localitySel.length &&
+       !(localitySel.includes("All") || localitySel.includes(p.locality))) {
+      return false;
+    }
     if(minP && (p.priceINR||0) < minP) return false;
     if(maxP && (p.priceINR||0) > maxP) return false;
     if(ptype && p.type !== ptype) return false;

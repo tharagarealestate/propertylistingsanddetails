@@ -253,8 +253,6 @@ function cardHTML(p, s) {
       <div class="row" style="gap:8px;flex-wrap:wrap">${tags}</div>
       <div class="row">
         <a class="btn" href="./details.html?id=${encodeURIComponent(p.id)}">View details</a>
-        <a class="btn secondary" href="./details.html?id=${encodeURIComponent(p.id)}#map">📍 View on Map</a>
-        <a class="btn secondary" href="https://wa.me/${encodeURIComponent((p.owner && p.owner.whatsapp) || '')}?text=Hi%2C%20I%20saw%20${encodeURIComponent(p.title)}%20on%20Tharaga" target="_blank">WhatsApp</a>
       </div>
     </div>
   </article>`;
